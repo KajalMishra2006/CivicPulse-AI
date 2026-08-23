@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isImageFile() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isValidSize() {
+      // 5MB max file size limit
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+
+    // Rules for issue images stored under issue_images/{userId}/{fileName}
+    match /issue_images/{userId}/{fileName} {
+      // Authenticated citizens, officials, and admins can view issue photos
+      allow read: if isAuthenticated();
+      
+      // Only authenticated users can upload issue images to their own folder, must be an image <= 5MB
+      allow write: if isOwner(userId) && isImageFile() && isValidSize();
+      
+      // Allow deletion by owner
+      allow delete: if isOwner(userId);
+    }
+  }
+}

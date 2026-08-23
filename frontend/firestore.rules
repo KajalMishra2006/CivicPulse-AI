@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==========================================
+    // HELPER FUNCTIONS
+    // ==========================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        getUserData().role == 'admin' && 
+        getUserData().verified == true;
+    }
+
+    function isOfficial() {
+      return isAuthenticated() && 
+        getUserData().role == 'official' && 
+        getUserData().verified == true;
+    }
+
+    // ==========================================
+    // 1. USERS COLLECTION (users/{userId})
+    // ==========================================
+    match /users/{userId} {
+      // Normal users can ONLY read their own profile; Admins can read any profile for administration
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Registration: User can only create their own document with role 'citizen' and verified: false
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role == 'citizen'
+        && request.resource.data.verified == false;
+      
+      // Updates:
+      // - Admins can update any user's role and verified status (atomic approval)
+      // - Normal users can update their own profile, but CANNOT modify role or verified status
+      allow update: if isAdmin() || (
+        isOwner(userId)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.verified == resource.data.verified
+      );
+      
+      allow delete: if false;
+    }
+
+    // ==========================================
+    // 2. VERIFICATION REQUESTS (verificationRequests/{requestId})
+    // ==========================================
+    match /verificationRequests/{requestId} {
+      // Admins can read all requests; Users can only read their own requests
+      allow read: if isAdmin() || (
+        isAuthenticated() && resource.data.userId == request.auth.uid
+      );
+      
+      // Authenticated users can create a verification request ONLY for their own UID with status 'pending'
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.organization is string
+        && request.resource.data.department is string
+        && request.resource.data.employeeId is string;
+      
+      // Only Admins can approve or reject verification requests
+      allow update: if isAdmin()
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.status in ['approved', 'rejected'];
+      
+      allow delete: if false;
+    }
+
+    // ==========================================
+    // 3. CIVIC ISSUES COLLECTION (issues/{issueId})
+    // ==========================================
+    match /issues/{issueId} {
+      // Officials and Admins can view all issues; Citizens can view their own reported issues
+      allow read: if isOfficial() || isAdmin() || (
+        isAuthenticated() && resource.data.userId == request.auth.uid
+      );
+      
+      // Citizens can create issues for their own userId with initial status "Pending"
+      allow create: if isAuthenticated() 
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'Pending';
+      
+      // Officials and Admins can update issue status; Citizens can edit their own pending issues without setting status to Resolved
+      allow update: if isOfficial() || isAdmin() || (
+        isAuthenticated() 
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.status != 'Resolved'
+        && (request.resource.data.status == resource.data.status || resource.data.status == 'Pending')
+      );
+      
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+  }
+}
