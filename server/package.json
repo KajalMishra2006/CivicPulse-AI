@@ -1,0 +1,26 @@
+{
+  "name": "civicpulse-backend-server",
+  "version": "1.0.0",
+  "description": "CivicPulse External AI Backend Server for Hackathon MVP",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test gemini.spec.js",
+    "lint": "eslint ."
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@google/genai": "^2.18.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.6.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-google": "^0.14.0"
+  },
+  "private": true
+}
