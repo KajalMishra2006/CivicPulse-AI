@@ -1,0 +1,148 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ================================
+    // HELPER FUNCTIONS
+    // ================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() &&
+             request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             getUserData().role == 'admin' &&
+             getUserData().verified == true;
+    }
+
+    function isOfficial() {
+      return isAuthenticated() &&
+             getUserData().role == 'official' &&
+             getUserData().verified == true;
+    }
+
+    // ================================
+    // USERS
+    // ================================
+
+    match /users/{userId} {
+
+      // User can read own profile.
+      // Admin can read all profiles.
+      allow read: if isOwner(userId) || isAdmin();
+
+      // New accounts MUST be citizens.
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role == 'citizen'
+        && request.resource.data.verified == false;
+
+      // Admin can update users.
+      // Normal users cannot change role or verified status.
+      allow update: if isAdmin()
+        || (
+          isOwner(userId)
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.verified == resource.data.verified
+        );
+
+      allow delete: if false;
+    }
+
+    // ================================
+    // GOVERNMENT VERIFICATION REQUESTS
+    // ================================
+
+    match /verificationRequests/{requestId} {
+
+      // Admin sees all requests.
+      // Applicant sees only their own request.
+      allow read: if isAdmin()
+        || (
+          isAuthenticated()
+          && resource.data.userId == request.auth.uid
+        );
+
+      // Logged-in users can submit their own request.
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.organization is string
+        && request.resource.data.department is string
+        && request.resource.data.employeeId is string;
+
+      // Only admins can approve/reject.
+      allow update: if isAdmin()
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.status in ['approved', 'rejected'];
+
+      allow delete: if false;
+    }
+
+    // ================================
+    // CIVIC ISSUES
+    // ================================
+
+    match /issues/{issueId} {
+
+      // Citizen sees own issues.
+      // Verified officials/admins see all issues.
+      allow read: if isOfficial()
+        || isAdmin()
+        || (
+          isAuthenticated()
+          && resource.data.userId == request.auth.uid
+        );
+
+      // Logged-in citizens can create their own issues.
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'Pending';
+
+      // Officials/admins can update issues.
+      // Citizens can update their own issue without changing its ownership/status improperly.
+      allow update: if isOfficial()
+        || isAdmin()
+        || (
+          isAuthenticated()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.status != 'Resolved'
+          && (
+            request.resource.data.status == resource.data.status
+            || resource.data.status == 'Pending'
+          )
+        );
+
+      allow delete: if isAdmin()
+        || (
+          isAuthenticated()
+          && resource.data.userId == request.auth.uid
+        );
+    }
+
+    // ================================
+    // DENY EVERYTHING ELSE
+    // ================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
