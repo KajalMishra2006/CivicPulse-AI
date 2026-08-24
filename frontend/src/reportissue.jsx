@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from './context/AuthContext.jsx'
 import { createIssue } from './firebase/issues.js'
+import './App.css'
 
 function ReportIssue({ onBack, onIssueSubmitted }) {
   const { currentUser, userProfile } = useAuth()
@@ -125,178 +126,210 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
 
   return (
     <div className="report-page">
-      <div className="report-card">
-        <button
-          type="button"
-          className="back-button"
-          onClick={onBack}
-          disabled={isSubmitting}
-        >
-          ← Back to Dashboard
-        </button>
-
-        <h1>Report a Civic Issue</h1>
-
-        <p>
-          Tell us about the problem in your community.
-        </p>
-
-        {error && <p className="error-message main-error">{error}</p>}
-
-        <form onSubmit={handleSubmit}>
-          <label>Issue Title *</label>
-          <input
-            type="text"
-            placeholder="Example: Broken streetlight / Deep crater on 5th Avenue"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            disabled={isSubmitting}
-          />
-
-          <label>Category *</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            required
+      <div className="report-page-container">
+        <div className="back-button-container">
+          <button
+            type="button"
+            className="back-button-styled"
+            onClick={onBack}
             disabled={isSubmitting}
           >
-            <option value="">Select Category</option>
-            <option value="Roads">Roads & Potholes</option>
-            <option value="Garbage">Garbage & Sanitation</option>
-            <option value="Streetlight">Streetlights</option>
-            <option value="Water">Water Supply</option>
-            <option value="Drainage">Drainage & Flooding</option>
-            <option value="Electricity">Electricity & Power</option>
-            <option value="Other">Other Civic Issue</option>
-          </select>
+            ← Back to Dashboard
+          </button>
+        </div>
 
-          <label>Description *</label>
-          <textarea
-            placeholder="Describe the issue in detail..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows="4"
-            required
-            disabled={isSubmitting}
-          />
+        <div className="report-card">
+          <h1 className="report-page-title">Report a Civic Issue</h1>
 
-          {/* Regional Area Details */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '8px' }}>
-            <div>
-              <label>Country</label>
-              <input
-                type="text"
-                placeholder="Country"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                disabled={isSubmitting}
-              />
-            </div>
+          <p className="report-page-subtitle">
+            Tell us about the problem in your community.
+          </p>
 
-            <div>
-              <label>State / Province</label>
-              <input
-                type="text"
-                placeholder="State"
-                value={stateVal}
-                onChange={(e) => setStateVal(e.target.value)}
-                disabled={isSubmitting}
-              />
-            </div>
+          {error && <p className="error-message main-error">{error}</p>}
 
-            <div>
-              <label>Local Area / Ward</label>
-              <input
-                type="text"
-                placeholder="Neighborhood / Area"
-                value={localArea}
-                onChange={(e) => setLocalArea(e.target.value)}
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-
-          <label>Specific Address / Landmark</label>
-          <input
-            type="text"
-            placeholder="e.g. Near City Hospital Gate 2, Main Street"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            disabled={isSubmitting}
-          />
-
-          {/* Geolocation Section */}
-          <div style={{ margin: '14px 0', padding: '12px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-              <div>
-                <strong style={{ fontSize: '13px', color: '#0f172a' }}>GPS Coordinates (Optional)</strong>
-                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-                  Capture your exact current coordinates to help municipal crews locate the issue.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className="filter-btn"
-                style={{ background: '#0284c7', color: 'white', borderColor: '#0284c7', padding: '6px 14px', fontSize: '12px' }}
-                onClick={handleGetLocation}
-                disabled={geoLoading || isSubmitting}
-              >
-                {geoLoading ? '📍 Locating...' : '📍 Use My Location'}
-              </button>
-            </div>
-
-            {geoMessage && (
-              <div style={{ marginTop: '8px', fontSize: '12px', color: '#059669', fontWeight: '600' }}>
-                {geoMessage}
-              </div>
-            )}
-
-            {geoError && (
-              <div style={{ marginTop: '8px', fontSize: '12px', color: '#d97706', fontWeight: '500' }}>
-                ℹ️ {geoError}
-              </div>
-            )}
-          </div>
-
-          {/* Photo Attachment Section */}
-          <div style={{ margin: '14px 0' }}>
-            <label>Attach Photo (Optional - max 5MB)</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              disabled={isSubmitting}
-            />
-
-            {imagePreview && (
-              <div className="image-preview-container" style={{ marginTop: '10px' }}>
-                <img
-                  src={imagePreview}
-                  alt="Selected issue preview"
-                  className="image-preview"
+          <form onSubmit={handleSubmit} className="report-issue-form">
+            {/* ROW 1: Title | Category | Description */}
+            <div className="form-row-top">
+              <div className="form-group">
+                <label className="form-label">
+                  Issue Title <span className="required-star">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Example: Broken streetlight / Deep crater on 5th Avenue"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  disabled={isSubmitting}
+                  className="form-input"
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Category <span className="required-star">*</span>
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  required
+                  disabled={isSubmitting}
+                  className="form-select"
+                >
+                  <option value="">Select Category</option>
+                  <option value="Roads">Roads & Potholes</option>
+                  <option value="Garbage">Garbage & Sanitation</option>
+                  <option value="Streetlight">Streetlights</option>
+                  <option value="Water">Water Supply</option>
+                  <option value="Drainage">Drainage & Flooding</option>
+                  <option value="Electricity">Electricity & Power</option>
+                  <option value="Other">Other Civic Issue</option>
+                </select>
+              </div>
+
+              <div className="form-group form-group-description">
+                <label className="form-label">
+                  Description <span className="required-star">*</span>
+                </label>
+                <textarea
+                  placeholder="Describe the issue in detail..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows="4"
+                  required
+                  disabled={isSubmitting}
+                  className="form-textarea"
+                />
+              </div>
+            </div>
+
+            {/* ROW 2: Country | State | Local Area */}
+            <div className="form-row-location">
+              <div className="form-group">
+                <label className="form-label">Country</label>
+                <input
+                  type="text"
+                  placeholder="Country"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  disabled={isSubmitting}
+                  className="form-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">State / Province</label>
+                <input
+                  type="text"
+                  placeholder="State"
+                  value={stateVal}
+                  onChange={(e) => setStateVal(e.target.value)}
+                  disabled={isSubmitting}
+                  className="form-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Local Area / Ward</label>
+                <input
+                  type="text"
+                  placeholder="Neighborhood / Area"
+                  value={localArea}
+                  onChange={(e) => setLocalArea(e.target.value)}
+                  disabled={isSubmitting}
+                  className="form-input"
+                />
+              </div>
+            </div>
+
+            {/* ROW 3: Specific Address / Landmark */}
+            <div className="form-group form-row-full">
+              <label className="form-label">Specific Address / Landmark</label>
+              <input
+                type="text"
+                placeholder="e.g. Near City Hospital Gate 2, Main Street"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                disabled={isSubmitting}
+                className="form-input"
+              />
+            </div>
+
+            {/* ROW 4: GPS Coordinates Section */}
+            <div className="gps-section-card">
+              <div className="gps-header-row">
+                <div className="gps-info">
+                  <strong className="gps-title">GPS Coordinates (Optional)</strong>
+                  <p className="gps-desc">
+                    Capture your exact current coordinates to help municipal crews locate the issue.
+                  </p>
+                </div>
+
                 <button
                   type="button"
-                  className="remove-image-btn"
-                  onClick={handleRemoveImage}
-                  disabled={isSubmitting}
+                  className="gps-btn"
+                  onClick={handleGetLocation}
+                  disabled={geoLoading || isSubmitting}
                 >
-                  ✕ Remove Photo
+                  {geoLoading ? '📍 Locating...' : '📍 Use My Location'}
                 </button>
               </div>
-            )}
-          </div>
 
-          <button
-            type="submit"
-            className="primary-button"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Uploading / Submitting Issue...' : 'Submit Issue'}
-          </button>
-        </form>
+              {geoMessage && (
+                <div className="gps-status-success">
+                  {geoMessage}
+                </div>
+              )}
+
+              {geoError && (
+                <div className="gps-status-notice">
+                  ℹ️ {geoError}
+                </div>
+              )}
+            </div>
+
+            {/* ROW 5: Photo Attachment Section */}
+            <div className="form-group form-row-full form-photo-section">
+              <label className="form-label">Attach Photo (Optional - max 5MB)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                disabled={isSubmitting}
+                className="form-file-input"
+              />
+
+              {imagePreview && (
+                <div className="image-preview-container">
+                  <img
+                    src={imagePreview}
+                    alt="Selected issue preview"
+                    className="image-preview"
+                  />
+                  <button
+                    type="button"
+                    className="remove-image-btn"
+                    onClick={handleRemoveImage}
+                    disabled={isSubmitting}
+                  >
+                    ✕ Remove Photo
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ROW 6: Submit Issue Button */}
+            <div className="form-submit-container">
+              <button
+                type="submit"
+                className="submit-issue-btn"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Uploading / Submitting Issue...' : 'Submit Issue'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )

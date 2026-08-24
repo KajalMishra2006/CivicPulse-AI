@@ -94,10 +94,10 @@ function OfficialVerificationRequest({ onBackToOfficialLogin, initialEmail = '',
         <div className="signup-card" style={{ maxWidth: '540px', textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
           <h1 style={{ fontSize: '26px' }}>Request Submitted</h1>
-          <p className="signup-description" style={{ color: '#d1fae5', fontSize: '15px' }}>
+          <p className="signup-description" style={{ color: '#059669', fontSize: '15px', fontWeight: '600' }}>
             Your verification request has been submitted. An administrator will review your request.
           </p>
-          <p style={{ color: '#9eb2c0', fontSize: '14px', lineHeight: '1.6' }}>
+          <p style={{ color: '#475569', fontSize: '14px', lineHeight: '1.6' }}>
             Once approved by a system administrator, you will be granted official access and can log in via the Government Official Portal.
           </p>
           <button
@@ -131,8 +131,8 @@ function OfficialVerificationRequest({ onBackToOfficialLogin, initialEmail = '',
         {error && <p className="error-message main-error">{error}</p>}
 
         <form onSubmit={handleSubmit}>
-          <div>
-            <label style={{ color: '#d7e5ed', fontSize: '13px', fontWeight: 'bold' }}>Full Name *</label>
+          <div className="location-field">
+            <label>Full Name *</label>
             <input
               type="text"
               placeholder="e.g. Sarah Jenkins"
@@ -143,8 +143,8 @@ function OfficialVerificationRequest({ onBackToOfficialLogin, initialEmail = '',
             />
           </div>
 
-          <div>
-            <label style={{ color: '#d7e5ed', fontSize: '13px', fontWeight: 'bold' }}>Official Work Email *</label>
+          <div className="location-field">
+            <label>Official Work Email *</label>
             <input
               type="email"
               placeholder="e.g. s.jenkins@citygov.org"
@@ -156,8 +156,8 @@ function OfficialVerificationRequest({ onBackToOfficialLogin, initialEmail = '',
           </div>
 
           {!currentUser && (
-            <div>
-              <label style={{ color: '#d7e5ed', fontSize: '13px', fontWeight: 'bold' }}>Account Password *</label>
+            <div className="location-field">
+              <label>Account Password *</label>
               <input
                 type="password"
                 placeholder="Enter password for verification account"
@@ -169,8 +169,8 @@ function OfficialVerificationRequest({ onBackToOfficialLogin, initialEmail = '',
             </div>
           )}
 
-          <div>
-            <label style={{ color: '#d7e5ed', fontSize: '13px', fontWeight: 'bold' }}>Organization / Municipality *</label>
+          <div className="location-field">
+            <label>Organization / Municipality *</label>
             <input
               type="text"
               placeholder="e.g. Municipal Corporation of Greater Mumbai"
@@ -181,8 +181,8 @@ function OfficialVerificationRequest({ onBackToOfficialLogin, initialEmail = '',
             />
           </div>
 
-          <div>
-            <label style={{ color: '#d7e5ed', fontSize: '13px', fontWeight: 'bold' }}>Department *</label>
+          <div className="location-field">
+            <label>Department *</label>
             <input
               type="text"
               placeholder="e.g. Public Works / Water Supply / Roads"
@@ -193,8 +193,8 @@ function OfficialVerificationRequest({ onBackToOfficialLogin, initialEmail = '',
             />
           </div>
 
-          <div>
-            <label style={{ color: '#d7e5ed', fontSize: '13px', fontWeight: 'bold' }}>Employee ID / Badge Number *</label>
+          <div className="location-field">
+            <label>Employee ID / Badge Number *</label>
             <input
               type="text"
               placeholder="e.g. EMP-98214"
@@ -205,27 +205,15 @@ function OfficialVerificationRequest({ onBackToOfficialLogin, initialEmail = '',
             />
           </div>
 
-          <div>
-            <label style={{ color: '#d7e5ed', fontSize: '13px', fontWeight: 'bold' }}>Reason for Access Request *</label>
+          <div className="location-field">
+            <label>Reason for Access Request *</label>
             <textarea
               placeholder="Describe your role and why you require official dashboard access..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows="3"
               disabled={isSubmitting}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '10px',
-                color: '#ffffff',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                outline: 'none',
-                resize: 'vertical',
-                boxSizing: 'border-box'
-              }}
+              className="verification-textarea"
               required
             />
           </div>
