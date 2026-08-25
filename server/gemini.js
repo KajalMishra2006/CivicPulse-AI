@@ -207,10 +207,67 @@ async function analyzeIssueWithGemini(issueData, apiKey) {
   return validateAIOutput(parsedJSON, issueData);
 }
 
+/**
+ * Translate user-generated complaint text into a target language using Gemini AI.
+ * @param {string} text The original text to translate.
+ * @param {string} sourceLanguage Source language name (e.g. 'Marathi', 'Hindi').
+ * @param {string} targetLanguage Target language name (e.g. 'Hindi', 'Gujarati').
+ * @param {string} apiKey Gemini API Key.
+ * @return {Promise<string>} Translated text.
+ */
+async function translateTextWithGemini(text, sourceLanguage, targetLanguage, apiKey) {
+  if (!text || typeof text !== "string" || !text.trim()) {
+    return "";
+  }
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured in the server environment.");
+  }
+
+  // Normalize language names (e.g. "Hindi (हिंदी)" -> "Hindi")
+  const cleanSource = (sourceLanguage || "").replace(/\s*\(.*?\)/g, "").trim();
+  const cleanTarget = (targetLanguage || "English").replace(/\s*\(.*?\)/g, "").trim();
+
+  // If source and target are identical, return text immediately
+  if (cleanSource && cleanTarget && cleanSource.toLowerCase() === cleanTarget.toLowerCase()) {
+    return text.trim();
+  }
+
+  const ai = new GoogleGenAI({apiKey});
+
+  const promptText = [
+    `You are an expert civic translator. Translate the following complaint into ${cleanTarget}.`,
+    "Preserve the original meaning, urgency, and civic context accurately.",
+    `Source Language: ${cleanSource || "Auto-detect"}`,
+    `Target Language: ${cleanTarget}`,
+    "",
+    "Text to translate:",
+    text.trim(),
+    "",
+    `Output ONLY the direct translation in ${cleanTarget}. Do not include quotes, preamble, notes, or markdown formatting.`,
+  ].join("\n");
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3.6-flash",
+    contents: promptText,
+    config: {
+      temperature: 0.1,
+    },
+  });
+
+  let responseText = response.text ? response.text.trim() : "";
+  // Strip surrounding quotes if model added them
+  if (responseText.startsWith("\"") && responseText.endsWith("\"")) {
+    responseText = responseText.slice(1, -1).trim();
+  }
+  return responseText || text.trim();
+}
+
 module.exports = {
   analyzeIssueWithGemini,
+  translateTextWithGemini,
   validateAIOutput,
   normalizePriorityScore,
   ALLOWED_CATEGORIES,
   ALLOWED_PRIORITIES,
 };
+
