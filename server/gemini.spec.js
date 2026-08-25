@@ -5,11 +5,29 @@ const assert = require("node:assert");
 const {
   validateAIOutput,
   normalizePriorityScore,
+  translateTextWithGemini,
   ALLOWED_CATEGORIES,
   ALLOWED_PRIORITIES,
 } = require("./gemini");
 
 describe("CivicPulse Standalone Server Gemini Validation", () => {
+  it("should return empty string or same text when source and target match", async () => {
+    const empty = await translateTextWithGemini("", "Marathi", "Hindi", "mock_key");
+    assert.strictEqual(empty, "");
+
+    const same = await translateTextWithGemini("रस्ता खराब आहे", "Marathi", "Marathi", "mock_key");
+    assert.strictEqual(same, "रस्ता खराब आहे");
+  });
+
+  it("should throw error if apiKey is missing in translateTextWithGemini", async () => {
+    await assert.rejects(
+        async () => {
+          await translateTextWithGemini("some text", "Marathi", "Hindi", null);
+        },
+        /GEMINI_API_KEY is not configured/,
+    );
+  });
+
   it("should validate and format complete HIGH priority output", () => {
     const raw = {
       language: "Marathi",

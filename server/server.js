@@ -1,11 +1,16 @@
 "use strict";
 
 require("dotenv").config();
+if (process.env.NODE_ENV !== "production") {
+  // Support local development environments with custom root certificates on Windows
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
 const fs = require("node:fs");
 const path = require("node:path");
 const express = require("express");
 const admin = require("firebase-admin");
-const {analyzeIssueWithGemini} = require("./gemini");
+const {analyzeIssueWithGemini, translateTextWithGemini} = require("./gemini");
+
 
 // 1. Initialize Firebase Admin SDK
 /**
@@ -59,6 +64,20 @@ const db = admin.firestore(app);
 // 2. Setup Express Application
 const server = express();
 server.use(express.json());
+
+// Enable CORS for frontend API calls
+server.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+  );
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // Set of issue IDs currently being processed to prevent concurrent duplicate calls
 const inFlightProcessing = new Set();
@@ -174,6 +193,50 @@ server.get("/health", (req, res) => {
   });
 });
 
+// Secure dynamic translation endpoint for user-generated complaint descriptions
+server.post("/api/translate", async (req, res) => {
+  try {
+    const {text, sourceLanguage, targetLanguage} = req.body;
+    console.log(`[TRANSLATE] Received translation request:`, {
+      sourceLanguage: sourceLanguage || "Auto",
+      targetLanguage: targetLanguage || "English",
+      textSnippet: text ? (text.slice(0, 60) + (text.length > 60 ? "..." : "")) : "",
+      hasApiKey: Boolean(process.env.GEMINI_API_KEY),
+    });
+
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({error: "Missing or invalid 'text' parameter."});
+    }
+
+    const target = targetLanguage || "English";
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("[TRANSLATE ERROR] GEMINI_API_KEY is missing from server environment.");
+      return res.status(500).json({error: "GEMINI_API_KEY is not configured on server."});
+    }
+
+    const translatedText = await translateTextWithGemini(
+        text.trim(),
+        sourceLanguage || "Auto",
+        target,
+        apiKey,
+    );
+
+    console.log(`[TRANSLATE SUCCESS] Translated to ${target}: "${translatedText.slice(0, 60)}..."`);
+
+    return res.json({
+      translatedText,
+      targetLanguage: target,
+      sourceLanguage: sourceLanguage || "Auto",
+    });
+  } catch (err) {
+    console.error("[TRANSLATE API ERROR]", err);
+    return res.status(500).json({
+      error: err.message || "Failed to translate complaint text.",
+    });
+  }
+});
+
 // 5. Start Server
 const PORT = process.env.PORT || 8080;
 if (process.env.NODE_ENV !== "test") {
@@ -187,4 +250,6 @@ module.exports = {
   server,
   processIssue,
   initFirebaseAdmin,
+  translateTextWithGemini,
 };
+
