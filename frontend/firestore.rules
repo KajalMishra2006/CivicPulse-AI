@@ -1,111 +1,201 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // ==========================================
-    // HELPER FUNCTIONS
-    // ==========================================
+
+    // ================================
+    // HELPER FUNCTIONS & HIERARCHICAL RBAC
+    // ================================
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isAuthenticated() &&
+             request.auth.uid == userId;
     }
 
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data;
     }
 
-    function isAdmin() {
-      return isAuthenticated() && 
-        getUserData().role == 'admin' && 
-        getUserData().verified == true;
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+             (getUserData().role in ['super_admin', 'admin', 'SUPER_ADMIN', 'ADMIN']) &&
+             (getUserData().verified == true || getUserData().accountStatus == 'active');
     }
 
-    function isOfficial() {
-      return isAuthenticated() && 
-        getUserData().role == 'official' && 
-        getUserData().verified == true;
+    function isStateAdmin() {
+      return isAuthenticated() &&
+             (getUserData().role in ['state_admin', 'STATE_ADMIN']) &&
+             (getUserData().verified == true || getUserData().accountStatus == 'active');
     }
 
-    // ==========================================
-    // 1. USERS COLLECTION (users/{userId})
-    // ==========================================
+    function isDistrictAdmin() {
+      return isAuthenticated() &&
+             (getUserData().role in ['district_admin', 'DISTRICT_ADMIN']) &&
+             (getUserData().verified == true || getUserData().accountStatus == 'active');
+    }
+
+    function isCitizenAccessEmployee() {
+      return isAuthenticated() &&
+             (getUserData().role in ['citizen_access_employee', 'citizen_access_officer', 'CITIZEN_ACCESS']) &&
+             (getUserData().verified == true || getUserData().accountStatus == 'active');
+    }
+
+    function isIssueResolutionEmployee() {
+      return isAuthenticated() &&
+             (getUserData().role in ['issue_resolution_employee', 'issue_resolution_officer', 'official', 'ISSUE_RESOLUTION']) &&
+             (getUserData().verified == true || getUserData().accountStatus == 'active');
+    }
+
+    function isVerifiedOfficial() {
+      return isSuperAdmin() || isStateAdmin() || isDistrictAdmin() || isCitizenAccessEmployee() || isIssueResolutionEmployee();
+    }
+
+    // ================================
+    // USERS COLLECTION
+    // ================================
+
     match /users/{userId} {
-      // Normal users can ONLY read their own profile; Admins can read any profile for administration
-      allow read: if isOwner(userId) || isAdmin();
-      
-      // Registration: User can only create their own document with role 'citizen' and verified: false
+
+      // User can read own profile; Officials/Admins can read user profiles according to tier.
+      allow read: if isOwner(userId) || isVerifiedOfficial();
+
+      // New citizen or official applicant registration MUST start unverified.
       allow create: if isOwner(userId)
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.role == 'citizen'
+        && request.resource.data.role in ['citizen', 'applicant']
         && request.resource.data.verified == false;
-      
-      // Updates:
-      // - Admins can update any user's role and verified status (atomic approval)
-      // - Normal users can update their own profile, but CANNOT modify role or verified status
-      allow update: if isAdmin() || (
-        isOwner(userId)
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.verified == resource.data.verified
-      );
-      
-      allow delete: if false;
+
+      // Admins and Citizen Access Employees can update user verification status.
+      // Normal citizens CANNOT self-elevate role or verification status.
+      allow update: if isSuperAdmin()
+        || isStateAdmin()
+        || isDistrictAdmin()
+        || isCitizenAccessEmployee()
+        || (
+          isOwner(userId)
+          && request.resource.data.uid == resource.data.uid
+          && (
+            (request.resource.data.role == resource.data.role && request.resource.data.verified == resource.data.verified)
+            || (resource.data.role in ['citizen', 'applicant'] && request.resource.data.role in ['citizen', 'applicant'] && request.resource.data.verified == false)
+          )
+        );
+
+      allow delete: if isSuperAdmin();
     }
 
-    // ==========================================
-    // 2. VERIFICATION REQUESTS (verificationRequests/{requestId})
-    // ==========================================
+    // ================================
+    // GOVERNMENT VERIFICATION REQUESTS
+    // ================================
+
     match /verificationRequests/{requestId} {
-      // Admins can read all requests; Users can only read their own requests
-      allow read: if isAdmin() || (
-        isAuthenticated() && resource.data.userId == request.auth.uid
-      );
-      
-      // Authenticated users can create a verification request ONLY for their own UID with status 'pending'
+
+      // Super Admin sees all; State/District Admins see scoped; applicants see own request.
+      allow read: if isSuperAdmin()
+        || isStateAdmin()
+        || isDistrictAdmin()
+        || (
+          isAuthenticated()
+          && (
+            resource.data.userId == request.auth.uid ||
+            resource.data.applicantUid == request.auth.uid
+          )
+        );
+
+      // Authenticated users can submit their own verification request.
+      allow create: if isAuthenticated()
+        && (request.resource.data.userId == request.auth.uid || request.resource.data.applicantUid == request.auth.uid)
+        && request.resource.data.status == 'pending';
+
+      // Only administrators can approve or reject government employee requests.
+      allow update: if (isSuperAdmin() || isStateAdmin() || isDistrictAdmin())
+        && request.resource.data.status in ['approved', 'rejected'];
+
+      allow delete: if isSuperAdmin();
+    }
+
+    // ================================
+    // CITIZEN IDENTITY REGISTRY (PROTECTED)
+    // ================================
+
+    match /identityRegistry/{identityHash} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // ================================
+    // CIVIC ISSUES & CLUSTERS
+    // ================================
+
+    match /issues/{issueId} {
+
+      // Citizens see their own issues or active issues; officials see all issues.
+      allow read: if isVerifiedOfficial()
+        || (
+          isAuthenticated()
+          && (
+            resource.data.userId == request.auth.uid ||
+            (resource.data.participantUserIds != null && request.auth.uid in resource.data.participantUserIds) ||
+            resource.data.status in ['Pending', 'In Progress', 'pending', 'in progress', 'Resolved', 'resolved']
+          )
+        );
+
+      // Logged-in citizens can create their own issues with Pending status.
       allow create: if isAuthenticated()
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'pending'
-        && request.resource.data.name is string
-        && request.resource.data.email is string
-        && request.resource.data.organization is string
-        && request.resource.data.department is string
-        && request.resource.data.employeeId is string;
-      
-      // Only Admins can approve or reject verification requests
-      allow update: if isAdmin()
-        && request.resource.data.userId == resource.data.userId
-        && request.resource.data.status in ['approved', 'rejected'];
-      
-      allow delete: if false;
+        && request.resource.data.status in ['Pending', 'pending'];
+
+      // Officials and Admins can update issues (status, priority, resolution notes).
+      // Citizens can update their own issue or join an existing cluster (increment reportCount / add participant).
+      allow update: if isVerifiedOfficial()
+        || (
+          isAuthenticated()
+          && (
+            (resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId && (request.resource.data.status == resource.data.status || resource.data.status in ['Pending', 'pending']))
+            || (
+              request.resource.data.status == resource.data.status
+              && request.resource.data.userId == resource.data.userId
+              && request.resource.data.category == resource.data.category
+            )
+          )
+        );
+
+      allow delete: if isSuperAdmin()
+        || (
+          isAuthenticated()
+          && resource.data.userId == request.auth.uid
+        );
+
+      // Subcollection for individual citizen reports grouped under cluster (private to reporter & officials)
+      match /reports/{reportId} {
+        allow read: if isVerifiedOfficial()
+          || (isAuthenticated() && resource.data.userId == request.auth.uid);
+
+        allow create: if isAuthenticated()
+          && request.resource.data.userId == request.auth.uid;
+
+        allow update, delete: if isSuperAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      }
     }
 
-    // ==========================================
-    // 3. CIVIC ISSUES COLLECTION (issues/{issueId})
-    // ==========================================
-    match /issues/{issueId} {
-      // Officials and Admins can view all issues; Citizens can view their own reported issues
-      allow read: if isOfficial() || isAdmin() || (
-        isAuthenticated() && resource.data.userId == request.auth.uid
-      );
-      
-      // Citizens can create issues for their own userId with initial status "Pending"
-      allow create: if isAuthenticated() 
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'Pending';
-      
-      // Officials and Admins can update issue status; Citizens can edit their own pending issues without setting status to Resolved
-      allow update: if isOfficial() || isAdmin() || (
-        isAuthenticated() 
-        && resource.data.userId == request.auth.uid
-        && request.resource.data.userId == resource.data.userId
-        && request.resource.data.status != 'Resolved'
-        && (request.resource.data.status == resource.data.status || resource.data.status == 'Pending')
-      );
-      
-      allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    // ================================
+    // USER ISSUE REFERENCES (CITIZEN INDEX)
+    // ================================
+
+    match /userIssueReferences/{userId}/issues/{clusterId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ================================
+    // DENY EVERYTHING ELSE
+    // ================================
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

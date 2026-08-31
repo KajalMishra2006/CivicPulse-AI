@@ -19,6 +19,11 @@ export const isPlaceholderKey =
   firebaseConfig.apiKey.includes('FakeKey') ||
   firebaseConfig.apiKey === 'AIzaSyFakeKeyForLocalSetup0123456789'
 
+if (typeof window !== 'undefined') {
+  console.log('[FIREBASE PROJECT]', firebaseConfig.projectId)
+  console.log('[FIREBASE AUTH DOMAIN]', firebaseConfig.authDomain)
+}
+
 if (isPlaceholderKey && typeof window !== 'undefined') {
   console.warn(
     '⚠️ [CivicPulse-AI] Firebase API key is currently set to a placeholder or is missing. ' +

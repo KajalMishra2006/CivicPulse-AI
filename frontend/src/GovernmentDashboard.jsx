@@ -1,537 +1,524 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './context/AuthContext.jsx'
 import {
-  subscribeAllIssues,
+  subscribeScopedIssues,
   updateIssueStatus,
-  calculateOfficialStats
+  calculateOfficialStats,
+  getIssueGroupReports
 } from './firebase/issues.js'
+import {
+  playTextToSpeech,
+  stopTextToSpeech
+} from './utils/speech.js'
+import { translateComplaintDynamic } from './utils/complaintTranslator.js'
 import './App.css'
 
 function GovernmentDashboard({ onLogout }) {
   const { currentUser, userProfile, logout } = useAuth()
+
+  const stateName = userProfile?.stateName || userProfile?.state || 'Maharashtra'
+  const stateId = userProfile?.stateId || stateName.toLowerCase().replace(/\s+/g, '_')
+
+  const districtName = userProfile?.districtName || userProfile?.district || 'Pune'
+  const districtId = userProfile?.districtId || districtName.toLowerCase().replace(/\s+/g, '_')
+
+  const talukaName = userProfile?.talukaName || userProfile?.taluka || 'Haveli'
+  const talukaId = userProfile?.talukaId || talukaName.toLowerCase().replace(/\s+/g, '_')
+
   const [issues, setIssues] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('queue') // 'overview' | 'queue' | 'high' | 'in_progress' | 'resolved'
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedIssue, setSelectedIssue] = useState(null)
+  const [error, setError] = useState('')
   const [updatingId, setUpdatingId] = useState(null)
-  const [actionError, setActionError] = useState('')
-  const [actionSuccess, setActionSuccess] = useState('')
+  const [filterCategory, setFilterCategory] = useState('All')
+  const [activeTab, setActiveTab] = useState('pending') // 'pending' | 'in_progress' | 'resolved'
+  const [resolutionNotes, setResolutionNotes] = useState('')
+
+  // Clustered details modal state
+  const [selectedIssue, setSelectedIssue] = useState(null)
+  const [groupReports, setGroupReports] = useState([])
+  const [loadingReports, setLoadingReports] = useState(false)
+
+  // Dynamic Translation & Voice in Details
+  const [translationLang, setTranslationLang] = useState('English')
+  const [translatedText, setTranslatedText] = useState('')
+  const [isTranslating, setIsTranslating] = useState(false)
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false)
 
   useEffect(() => {
-    setLoading(true)
-    const unsubscribe = subscribeAllIssues(
-      (allSortedIssues) => {
-        setIssues(allSortedIssues)
+    // 1. Real-time subscription strictly scoped to this Taluka
+    const unsubscribe = subscribeScopedIssues(
+      { role: 'issue_resolution_employee', stateId, districtId, talukaId },
+      (scopedIssues) => {
+        setIssues(scopedIssues)
         setLoading(false)
+        setError('')
       },
       (err) => {
-        console.error('Error fetching issues for Government Operations:', err)
+        console.error('Error fetching taluka issues:', err)
+        setError('Failed to fetch taluka issues in real time.')
         setLoading(false)
       }
     )
 
-    return () => unsubscribe()
-  }, [])
-
-  const stats = calculateOfficialStats(issues)
-
-  // Filter issues based on activeTab and searchQuery
-  const filteredIssues = issues.filter((issue) => {
-    const priority = (issue.priority || 'Medium').toLowerCase()
-    const status = (issue.status || 'Pending').toLowerCase()
-
-    // Tab filter
-    if (activeTab === 'high' && priority !== 'high') return false
-    if (activeTab === 'in_progress' && status !== 'in progress') return false
-    if (activeTab === 'resolved' && status !== 'resolved') return false
-    if (activeTab === 'overview' && priority !== 'high' && status === 'resolved') return false
-
-    // Search query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      const matchTitle = (issue.title || '').toLowerCase().includes(q)
-      const matchCat = (issue.category || '').toLowerCase().includes(q)
-      const matchLoc = (issue.location || '').toLowerCase().includes(q)
-      const matchUser = (issue.userName || '').toLowerCase().includes(q)
-      const matchDesc = (issue.description || '').toLowerCase().includes(q)
-      return matchTitle || matchCat || matchLoc || matchUser || matchDesc
+    return () => {
+      unsubscribe()
+      stopTextToSpeech()
     }
+  }, [stateId, districtId, talukaId])
 
-    return true
-  })
-
-  async function handleStatusChange(issueId, newStatus) {
-    setActionError('')
-    setActionSuccess('')
-    setUpdatingId(issueId)
+  // Open modal and load grouped citizen reports
+  async function handleOpenDetails(issue) {
+    setSelectedIssue(issue)
+    setTranslatedText('')
+    setResolutionNotes(issue.resolutionNotes || '')
+    setLoadingReports(true)
 
     try {
-      await updateIssueStatus(issueId, newStatus, currentUser?.uid)
-      setActionSuccess(`Issue status updated to "${newStatus}".`)
+      const clusterId = issue.issueClusterId || issue.groupId || issue.id
+      const reports = await getIssueGroupReports(clusterId)
+      setGroupReports(reports.length > 0 ? reports : [issue])
+    } catch (err) {
+      console.error('Error loading cluster reports:', err)
+      setGroupReports([issue])
+    } finally {
+      setLoadingReports(false)
+    }
+  }
+
+  function handleCloseDetails() {
+    setSelectedIssue(null)
+    setGroupReports([])
+    setTranslatedText('')
+    stopTextToSpeech()
+    setIsPlayingAudio(false)
+  }
+
+  // Handle dynamic translation
+  async function handleTranslate(targetLang) {
+    if (!selectedIssue) return
+    setTranslationLang(targetLang)
+    setIsTranslating(true)
+
+    try {
+      const result = await translateComplaintDynamic({
+        text: selectedIssue.description,
+        sourceLanguage: selectedIssue.preferredLanguage || selectedIssue.originalLanguage || 'Auto',
+        targetLanguage: targetLang
+      })
+      setTranslatedText(result)
+    } catch (err) {
+      console.error('Translation error:', err)
+    } finally {
+      setIsTranslating(false)
+    }
+  }
+
+  // Handle TTS audio reading
+  function handleToggleAudio() {
+    if (isPlayingAudio) {
+      stopTextToSpeech()
+      setIsPlayingAudio(false)
+      return
+    }
+
+    if (!selectedIssue) return
+    const textToSpeak = translatedText || selectedIssue.description
+    const langToSpeak = translatedText ? translationLang : (selectedIssue.preferredLanguage || 'English')
+
+    playTextToSpeech({
+      text: textToSpeak,
+      languageName: langToSpeak,
+      onStart: () => setIsPlayingAudio(true),
+      onEnd: () => setIsPlayingAudio(false),
+      onError: () => setIsPlayingAudio(false)
+    })
+  }
+
+  // Handle Status Update with Resolution Notes
+  async function handleStatusChange(issueId, newStatus) {
+    setUpdatingId(issueId)
+    setError('')
+    try {
+      await updateIssueStatus(issueId, newStatus, currentUser?.uid, resolutionNotes)
       if (selectedIssue && selectedIssue.id === issueId) {
-        setSelectedIssue((prev) => (prev ? { ...prev, status: newStatus } : null))
+        setSelectedIssue((prev) => ({ ...prev, status: newStatus, resolutionNotes }))
       }
     } catch (err) {
       console.error('Error updating status:', err)
-      setActionError(err.message || 'Failed to update issue status.')
+      setError('Failed to update issue status. Please try again.')
     } finally {
       setUpdatingId(null)
     }
   }
 
-  async function handleLogoutClick() {
-    if (onLogout) {
-      onLogout()
-    } else {
-      await logout()
-    }
-  }
+  // Filter issues based on active tab and category
+  const filteredIssues = issues.filter((issue) => {
+    const rawStatus = (issue.status || 'Pending').toLowerCase()
+    if (activeTab === 'pending' && rawStatus !== 'pending') return false
+    if (activeTab === 'in_progress' && rawStatus !== 'in progress') return false
+    if (activeTab === 'resolved' && rawStatus !== 'resolved') return false
 
-  function formatDate(timestamp) {
-    if (!timestamp) return 'N/A'
-    try {
-      if (timestamp.seconds) {
-        return new Date(timestamp.seconds * 1000).toLocaleString(undefined, {
-          dateStyle: 'medium',
-          timeStyle: 'short'
-        })
-      }
-      return new Date(timestamp).toLocaleString(undefined, {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-      })
-    } catch {
-      return 'N/A'
-    }
-  }
+    if (filterCategory !== 'All' && issue.category !== filterCategory) return false
+    return true
+  })
+
+  const stats = calculateOfficialStats(issues)
 
   return (
-    <div className="gov-operations-layout">
-      {/* 1. OPERATIONS SIDEBAR */}
-      <aside className="gov-sidebar">
-        <div className="gov-sidebar-brand">
-          <h2>CivicPulse-AI</h2>
-          <p>Government Operations</p>
+    <div className="dashboard-page">
+      {/* 1. TOP NAVBAR */}
+      <nav className="navbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <h2>CivicPulse<span className="brand-accent">-AI</span></h2>
+          <span className="official-badge">
+            Taluka Issue Resolution Portal
+          </span>
+          <span style={{ fontSize: '13px', background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
+            📍 {talukaName}, {districtName}
+          </span>
         </div>
 
-        <nav className="gov-sidebar-menu">
-          <button
-            type="button"
-            className={`gov-menu-item ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            <span>📊 Operations Overview</span>
-          </button>
-
-          <button
-            type="button"
-            className={`gov-menu-item ${activeTab === 'queue' ? 'active' : ''}`}
-            onClick={() => setActiveTab('queue')}
-          >
-            <span>📋 Complaint Queue</span>
-            <span className="gov-badge-count">{stats.total}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`gov-menu-item ${activeTab === 'high' ? 'active' : ''}`}
-            onClick={() => setActiveTab('high')}
-          >
-            <span>🚨 High Priority</span>
-            <span className="gov-badge-count" style={{ background: '#ef4444', color: 'white' }}>
-              {stats.highPriority}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`gov-menu-item ${activeTab === 'in_progress' ? 'active' : ''}`}
-            onClick={() => setActiveTab('in_progress')}
-          >
-            <span>⚙️ In Progress</span>
-            <span className="gov-badge-count" style={{ background: '#0284c7', color: 'white' }}>
-              {stats.inProgress}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`gov-menu-item ${activeTab === 'resolved' ? 'active' : ''}`}
-            onClick={() => setActiveTab('resolved')}
-          >
-            <span>✅ Resolved</span>
-            <span className="gov-badge-count" style={{ background: '#10b981', color: 'white' }}>
-              {stats.resolved}
-            </span>
-          </button>
-        </nav>
-
-        <div className="gov-sidebar-footer">
-          <div className="gov-user-info">
-            <p className="gov-user-name">{userProfile?.name || currentUser?.displayName || currentUser?.email || 'Official'}</p>
-            <p className="gov-user-dept">{userProfile?.department || userProfile?.organization || 'Municipal Authority'}</p>
-          </div>
+        <div className="official-user-tag">
+          <span>{userProfile?.name || currentUser?.email}</span>
           <button
             type="button"
             className="secondary-button"
-            style={{ width: '100%', marginTop: 0, padding: '8px 12px', fontSize: '13px' }}
-            onClick={handleLogoutClick}
+            style={{ marginTop: 0 }}
+            onClick={onLogout || logout}
           >
             Logout
           </button>
         </div>
-      </aside>
+      </nav>
 
-      {/* 2. MAIN OPERATIONS VIEWPORT */}
-      <div className="gov-main-viewport">
-        <header className="gov-topbar">
+      {/* 2. MAIN VIEWPORT */}
+      <main className="dashboard-content">
+        <section className="hero-section" style={{ background: 'linear-gradient(135deg, #065f46 0%, #059669 100%)', color: 'white' }}>
           <div>
-            <h1>
-              {activeTab === 'overview' && 'Operations Center Overview'}
-              {activeTab === 'queue' && 'Civic Complaints Priority Queue'}
-              {activeTab === 'high' && '🚨 Critical & High Priority Queue'}
-              {activeTab === 'in_progress' && '⚙️ In Progress Works'}
-              {activeTab === 'resolved' && '✅ Resolved Complaints'}
-            </h1>
-            <p>Real-time civic operations triage and municipal task resolution</p>
+            <p className="welcome-label" style={{ color: '#a7f3d0' }}>MUNICIPAL FIELD OPERATIONS & RESOLUTION</p>
+            <h1 style={{ color: 'white' }}>{talukaName} Taluka Civic Resolution</h1>
+            <p style={{ color: '#d1fae5' }}>
+              Real-time complaint triage sorted by AI Priority Score descending. Clustered community issues update across all citizens simultaneously.
+            </p>
+          </div>
+        </section>
+
+        {error && <p className="error-message main-error">{error}</p>}
+
+        {/* 3. KEY METRICS STATS CARDS */}
+        <section className="stats-grid">
+          <div className="stat-card">
+            <span className="stat-icon">📋</span>
+            <h2>{stats.total}</h2>
+            <p>Total Complaints</p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span className="official-badge" style={{ margin: 0 }}>
-              Official Portal
-            </span>
-          </div>
-        </header>
-
-        <main className="gov-content-area">
-          {/* Operations 7-Metric Dashboard Bar */}
-          <section className="gov-stats-7">
-            <div className="gov-stat-card">
-              <h3>{stats.total}</h3>
-              <p>Total Complaints</p>
-            </div>
-
-            <div className="gov-stat-card stat-high">
-              <h3 style={{ color: '#dc2626' }}>{stats.highPriority}</h3>
-              <p>High Priority</p>
-            </div>
-
-            <div className="gov-stat-card stat-medium">
-              <h3 style={{ color: '#d97706' }}>{stats.mediumPriority}</h3>
-              <p>Medium Priority</p>
-            </div>
-
-            <div className="gov-stat-card stat-low">
-              <h3 style={{ color: '#0369a1' }}>{stats.lowPriority}</h3>
-              <p>Low Priority</p>
-            </div>
-
-            <div className="gov-stat-card stat-pending">
-              <h3 style={{ color: '#eab308' }}>{stats.pending}</h3>
-              <p>Pending</p>
-            </div>
-
-            <div className="gov-stat-card stat-inprogress">
-              <h3 style={{ color: '#0284c7' }}>{stats.inProgress}</h3>
-              <p>In Progress</p>
-            </div>
-
-            <div className="gov-stat-card stat-resolved">
-              <h3 style={{ color: '#10b981' }}>{stats.resolved}</h3>
-              <p>Resolved</p>
-            </div>
-          </section>
-
-          {/* Feedback messages */}
-          {actionSuccess && (
-            <div className="main-error" style={{ background: '#ecfdf5', borderColor: '#a7f3d0', color: '#065f46', marginBottom: '16px' }}>
-              ✓ {actionSuccess}
-            </div>
-          )}
-          {actionError && <p className="error-message main-error">{actionError}</p>}
-
-          {/* Search & Filter Bar */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1', minWidth: '240px', maxWidth: '450px' }}>
-              <input
-                type="text"
-                placeholder="🔍 Search complaints by title, category, location, or citizen..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  fontSize: '14px',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div style={{ color: '#64748b', fontSize: '13px', fontWeight: '500' }}>
-              Showing <strong>{filteredIssues.length}</strong> complaints (Sorted: <strong>High → Medium → Low</strong>)
-            </div>
+          <div className="stat-card">
+            <span className="stat-icon">🚨</span>
+            <h2 style={{ color: '#dc2626' }}>{stats.highPriority}</h2>
+            <p>High Priority</p>
           </div>
 
-          {/* Complaints List */}
-          <section>
-            {loading ? (
-              <div className="stat-card" style={{ padding: '32px', textAlign: 'center' }}>
-                <p>Connecting to real-time operations feed...</p>
-              </div>
-            ) : filteredIssues.length === 0 ? (
-              <div className="stat-card" style={{ padding: '40px', textAlign: 'center' }}>
-                <h3>No complaints found in this category</h3>
-                <p style={{ color: '#64748b' }}>All tasks in this queue are currently cleared.</p>
-              </div>
-            ) : (
-              filteredIssues.map((issue) => {
-                const priority = (issue.priority || 'Medium').toLowerCase()
-                const status = (issue.status || 'Pending').toLowerCase()
+          <div className="stat-card">
+            <span className="stat-icon">⏳</span>
+            <h2 style={{ color: '#eab308' }}>{stats.pending}</h2>
+            <p>Pending</p>
+          </div>
 
-                return (
-                  <div
-                    key={issue.id}
-                    className={`gov-issue-card priority-border-${priority}`}
-                  >
-                    <div className="gov-card-header">
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                          <span className={`priority-badge priority-${priority}`}>
-                            {priority === 'high' && '🚨 '}
-                            {issue.priority || 'Medium'}
-                          </span>
-                          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>
-                            Score: {issue.priorityScore || 50}/100
-                          </span>
-                        </div>
+          <div className="stat-card">
+            <span className="stat-icon">⚙️</span>
+            <h2 style={{ color: '#0284c7' }}>{stats.inProgress}</h2>
+            <p>In Progress</p>
+          </div>
 
-                        <h2 className="gov-card-title">{issue.title}</h2>
-                      </div>
+          <div className="stat-card" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+            <span className="stat-icon">✅</span>
+            <h2 style={{ color: '#166534' }}>{stats.resolved}</h2>
+            <p style={{ color: '#15803d', fontWeight: '700' }}>Resolved</p>
+          </div>
+        </section>
 
-                      <div className="gov-badges-row">
-                        <span className={`status-badge status-${status.replace(' ', '-')}`}>
-                          {issue.status || 'Pending'}
+        {/* 4. QUEUE TABS & CATEGORY FILTER */}
+        <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`filter-btn ${activeTab === 'pending' ? 'active' : ''}`}
+              onClick={() => setActiveTab('pending')}
+              style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700' }}
+            >
+              ⏳ Active Pending Queue ({stats.pending})
+            </button>
+
+            <button
+              type="button"
+              className={`filter-btn ${activeTab === 'in_progress' ? 'active' : ''}`}
+              onClick={() => setActiveTab('in_progress')}
+              style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700' }}
+            >
+              ⚙️ In Progress ({stats.inProgress})
+            </button>
+
+            <button
+              type="button"
+              className={`filter-btn ${activeTab === 'resolved' ? 'active' : ''}`}
+              onClick={() => setActiveTab('resolved')}
+              style={{ padding: '8px 16px', fontSize: '13px', fontWeight: '700' }}
+            >
+              ✓ Resolved Archive ({stats.resolved})
+            </button>
+          </div>
+
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="form-select"
+            style={{ padding: '8px 14px', fontSize: '13px' }}
+          >
+            <option value="All">All Categories</option>
+            <option value="Roads">Roads & Potholes</option>
+            <option value="Garbage">Garbage & Sanitation</option>
+            <option value="Streetlight">Streetlights</option>
+            <option value="Water">Water Supply</option>
+            <option value="Drainage">Drainage & Flooding</option>
+            <option value="Electricity">Electricity & Power</option>
+            <option value="Other">Other Civic Issues</option>
+          </select>
+        </section>
+
+        {/* 5. ISSUES QUEUE */}
+        {loading ? (
+          <div className="stat-card" style={{ padding: '30px', textAlign: 'center' }}>
+            <p>Loading taluka complaint queue...</p>
+          </div>
+        ) : filteredIssues.length === 0 ? (
+          <div className="stat-card" style={{ padding: '30px', textAlign: 'center' }}>
+            <p>No complaints in this queue for {talukaName} Taluka.</p>
+          </div>
+        ) : (
+          <section className="issues-list-section">
+            {filteredIssues.map((issue) => {
+              const priorityClass = (issue.priority || 'MEDIUM').toLowerCase()
+              const statusClass = (issue.status || 'Pending').toLowerCase().replace(' ', '-')
+              const reportCount = issue.reportCount || 1
+
+              return (
+                <div
+                  key={issue.id}
+                  className={`issue-card priority-${priorityClass}`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => handleOpenDetails(issue)}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <span className={`priority-badge priority-${priorityClass}`}>
+                        {issue.priority || 'MEDIUM'} ({issue.priorityScore || 50}/100)
+                      </span>
+
+                      <h2 style={{ margin: 0, fontSize: '18px' }}>{issue.title}</h2>
+
+                      {reportCount > 1 && (
+                        <span style={{ fontSize: '12px', background: '#dbeafe', color: '#1e40af', padding: '3px 10px', borderRadius: '12px', fontWeight: '700' }}>
+                          👥 {reportCount} Citizens Reported
                         </span>
-                      </div>
+                      )}
                     </div>
 
-                    <div className="gov-meta-grid">
-                      <div>
-                        <strong>Category:</strong> {issue.category || 'General'}
-                      </div>
-                      <div>
-                        <strong>Location:</strong> {issue.location || 'Not specified'}
-                      </div>
-                      <div>
-                        <strong>Reported by:</strong> {issue.userName || 'Citizen'} ({issue.userEmail || 'N/A'})
-                      </div>
-                      <div>
-                        <strong>Date:</strong> {formatDate(issue.createdAt)}
-                      </div>
+                    <span className={`status-badge status-${statusClass}`}>
+                      {issue.status || 'Pending'}
+                    </span>
+                  </div>
+
+                  <p style={{ margin: '8px 0', fontSize: '14px', color: '#334155' }}>
+                    {issue.description}
+                  </p>
+
+                  <div className="issue-meta-row">
+                    <div className="issue-meta-item">
+                      <strong>Category:</strong> {issue.category}
                     </div>
+                    <div className="issue-meta-item">
+                      <strong>Location:</strong> {issue.location || `${talukaName}, ${districtName}`}
+                    </div>
+                    <div className="issue-meta-item">
+                      <strong>Reported:</strong> {issue.createdAt?.seconds ? new Date(issue.createdAt.seconds * 1000).toLocaleString() : 'Recent'}
+                    </div>
+                    <div className="issue-meta-item">
+                      <strong>Language:</strong> {issue.preferredLanguage || 'English'}
+                    </div>
+                  </div>
 
-                    <p className="gov-card-description">
-                      {issue.description}
-                    </p>
-
-                    {issue.imageUrl && (
-                      <div style={{ marginBottom: '12px' }}>
-                        <img
-                          src={issue.imageUrl}
-                          alt={issue.title}
-                          className="issue-photo"
-                          style={{ maxHeight: '160px', borderRadius: '8px' }}
-                          loading="lazy"
-                        />
-                      </div>
-                    )}
-
-                    {/* Operations Action Bar */}
-                    <div className="gov-action-toolbar">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        {status !== 'in progress' && status !== 'resolved' && (
-                          <button
-                            type="button"
-                            className="btn-gov-work"
-                            disabled={updatingId === issue.id}
-                            onClick={() => handleStatusChange(issue.id, 'In Progress')}
-                          >
-                            {updatingId === issue.id ? 'Updating...' : '⚙️ Start Working'}
-                          </button>
-                        )}
-
-                        {status !== 'resolved' && (
-                          <button
-                            type="button"
-                            className="btn-gov-resolve"
-                            disabled={updatingId === issue.id}
-                            onClick={() => handleStatusChange(issue.id, 'Resolved')}
-                          >
-                            {updatingId === issue.id ? 'Updating...' : '✓ Mark as Resolved'}
-                          </button>
-                        )}
-
-                        {status === 'resolved' && (
-                          <span style={{ fontSize: '13px', color: '#059669', fontWeight: '600' }}>
-                            ✓ Resolved on {formatDate(issue.resolvedAt || issue.updatedAt)}
-                          </span>
-                        )}
-                      </div>
+                  {/* QUICK STATUS BUTTONS */}
+                  <div
+                    className="status-control-container"
+                    style={{ marginTop: '12px', paddingTop: '10px' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="status-control-label">Status Action:</span>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className={`status-btn-pill ${issue.status === 'Pending' ? 'active-pending' : ''}`}
+                        disabled={updatingId === issue.id}
+                        onClick={() => handleStatusChange(issue.id, 'Pending')}
+                      >
+                        Pending
+                      </button>
 
                       <button
                         type="button"
-                        className="btn-gov-details"
-                        onClick={() => setSelectedIssue(issue)}
+                        className={`status-btn-pill ${issue.status === 'In Progress' ? 'active-progress' : ''}`}
+                        disabled={updatingId === issue.id}
+                        onClick={() => handleStatusChange(issue.id, 'In Progress')}
                       >
-                        🔍 View Full Details
+                        In Progress
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`status-btn-pill ${issue.status === 'Resolved' ? 'active-resolved' : ''}`}
+                        disabled={updatingId === issue.id}
+                        onClick={() => handleStatusChange(issue.id, 'Resolved')}
+                      >
+                        ✓ Mark Resolved
                       </button>
                     </div>
                   </div>
-                )
-              })
-            )}
+                </div>
+              )
+            })}
           </section>
-        </main>
-      </div>
+        )}
+      </main>
 
-      {/* 3. ISSUE DETAILS MODAL */}
+      {/* 6. DETAILED CLUSTER MODAL WITH CITIZEN AUDIT LIST & AI TRANSLATION */}
       {selectedIssue && (
-        <div className="gov-modal-backdrop" onClick={() => setSelectedIssue(null)}>
-          <div className="gov-modal-card" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="gov-modal-close"
-              onClick={() => setSelectedIssue(null)}
-            >
+        <div className="gov-modal-backdrop" onClick={handleCloseDetails}>
+          <div className="gov-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '780px' }}>
+            <button type="button" className="gov-modal-close" onClick={handleCloseDetails}>
               ✕
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <span className={`priority-badge priority-${(selectedIssue.priority || 'Medium').toLowerCase()}`}>
-                {selectedIssue.priority || 'Medium'} Priority
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              <span className={`priority-badge priority-${(selectedIssue.priority || 'MEDIUM').toLowerCase()}`}>
+                {selectedIssue.priority || 'MEDIUM'} ({selectedIssue.priorityScore || 50}/100)
               </span>
-              <span className={`status-badge status-${(selectedIssue.status || 'Pending').toLowerCase().replace(' ', '-')}`}>
-                {selectedIssue.status || 'Pending'}
-              </span>
+              <h2 style={{ margin: 0, fontSize: '22px' }}>{selectedIssue.title}</h2>
             </div>
 
-            <h2 style={{ margin: '0 0 16px 0', fontSize: '24px', color: '#0f172a' }}>{selectedIssue.title}</h2>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 14px 0' }}>
+              📍 {selectedIssue.location || `${talukaName}, ${districtName}`} | Category: <strong>{selectedIssue.category}</strong>
+            </p>
 
-            <div className="issue-meta-row" style={{ marginTop: 0 }}>
-              <div className="issue-meta-item">
-                <strong>Category:</strong> {selectedIssue.category || 'General'}
-              </div>
-              <div className="issue-meta-item">
-                <strong>Location:</strong> {selectedIssue.location || 'Not specified'}
-              </div>
-              <div className="issue-meta-item">
-                <strong>Priority Score:</strong> {selectedIssue.priorityScore || 50}/100
-              </div>
-            </div>
+            {/* ORIGINAL COMPLAINT & AUDIO LISTENING */}
+            <div style={{ padding: '14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <strong style={{ fontSize: '14px', color: '#0f172a' }}>
+                  Original Complaint Description ({selectedIssue.preferredLanguage || 'English'})
+                </strong>
 
-            {selectedIssue.latitude !== null && selectedIssue.latitude !== undefined && (
-              <div style={{ padding: '8px 12px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', margin: '10px 0', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                <span style={{ color: '#0369a1', fontWeight: '600' }}>
-                  📍 GPS: {Number(selectedIssue.latitude).toFixed(5)}, {Number(selectedIssue.longitude).toFixed(5)}
-                </span>
-                <a
-                  href={`https://maps.google.com/?q=${selectedIssue.latitude},${selectedIssue.longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: '#0284c7', fontWeight: '700', textDecoration: 'none', fontSize: '12px' }}
+                <button
+                  type="button"
+                  className="btn-tts-listen"
+                  onClick={handleToggleAudio}
+                  style={{ padding: '4px 12px', fontSize: '12px' }}
                 >
-                  🗺️ View on Google Maps ↗
-                </a>
+                  {isPlayingAudio ? '⏹️ Stop Reading' : '🔊 Listen Aloud'}
+                </button>
               </div>
-            )}
 
-            <div className="issue-meta-row">
-              <div className="issue-meta-item">
-                <strong>Reported by:</strong> {selectedIssue.userName || 'Citizen'}
-              </div>
-              <div className="issue-meta-item">
-                <strong>Citizen Email:</strong> {selectedIssue.userEmail || 'N/A'}
-              </div>
-              <div className="issue-meta-item">
-                <strong>Reported On:</strong> {formatDate(selectedIssue.createdAt)}
-              </div>
-            </div>
-
-            <div style={{ margin: '16px 0' }}>
-              <strong style={{ color: '#0f172a', fontSize: '14px' }}>Full Description:</strong>
-              <p style={{ margin: '6px 0 0 0', color: '#334155', fontSize: '14px', lineHeight: '1.6' }}>
-                {selectedIssue.description}
+              <p style={{ margin: 0, fontSize: '14px', color: '#1e293b', whiteSpace: 'pre-wrap' }}>
+                {translatedText || selectedIssue.description}
               </p>
             </div>
 
-            {selectedIssue.imageUrl && (
-              <div style={{ margin: '16px 0' }}>
-                <strong style={{ color: '#0f172a', fontSize: '14px' }}>Attached Citizen Photo:</strong>
-                <div style={{ marginTop: '8px' }}>
-                  <img
-                    src={selectedIssue.imageUrl}
-                    alt={selectedIssue.title}
-                    style={{ maxWidth: '100%', maxHeight: '350px', borderRadius: '10px', objectFit: 'contain' }}
-                  />
+            {/* DYNAMIC GEMINI TRANSLATION TOOL */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#475569' }}>
+                🌐 Translate Complaint:
+              </span>
+              {['English', 'Hindi', 'Marathi', 'Gujarati', 'Tamil', 'Telugu', 'Bengali', 'Kannada'].map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => handleTranslate(lang)}
+                  disabled={isTranslating}
+                  className={`filter-btn ${translationLang === lang ? 'active' : ''}`}
+                  style={{ padding: '4px 10px', fontSize: '12px' }}
+                >
+                  {lang}
+                </button>
+              ))}
+              {isTranslating && <span style={{ fontSize: '12px', color: '#0284c7' }}>Translating with Gemini AI...</span>}
+            </div>
+
+            {/* CITIZEN SUBMISSIONS IN THIS CLUSTER */}
+            <div style={{ marginBottom: '18px' }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>👥</span> All Citizen Reports in This Cluster ({groupReports.length})
+              </h3>
+
+              {loadingReports ? (
+                <p style={{ fontSize: '13px', color: '#64748b' }}>Loading reporting citizen details...</p>
+              ) : (
+                <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px' }}>
+                  {groupReports.map((rep, idx) => (
+                    <div key={rep.id || idx} style={{ padding: '8px 10px', borderBottom: idx < groupReports.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: '13px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0f172a', fontWeight: '600' }}>
+                        <span>{idx + 1}. {rep.userName || rep.userEmail || 'Citizen'}</span>
+                        <span style={{ color: '#64748b', fontSize: '12px' }}>
+                          {rep.createdAt?.seconds ? new Date(rep.createdAt.seconds * 1000).toLocaleString() : 'Recent'}
+                        </span>
+                      </div>
+                      <p style={{ margin: '3px 0 0 0', color: '#475569', fontSize: '12px' }}>
+                        "{rep.originalDescription || rep.description}"
+                      </p>
+                    </div>
+                  ))}
                 </div>
+              )}
+            </div>
+
+            {/* RESOLUTION NOTES & ACTIONS */}
+            <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '6px' }}>
+                Resolution Notes / Action Taken:
+              </label>
+              <textarea
+                value={resolutionNotes}
+                onChange={(e) => setResolutionNotes(e.target.value)}
+                placeholder="e.g. Municipal road team dispatched; pothole filled with hot mix asphalt..."
+                rows="2"
+                className="form-textarea"
+                style={{ width: '100%', marginBottom: '12px' }}
+              />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    style={{ marginTop: 0 }}
+                    onClick={() => handleStatusChange(selectedIssue.id, 'In Progress')}
+                    disabled={updatingId === selectedIssue.id}
+                  >
+                    Mark In Progress
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    style={{ background: '#10b981', color: 'white', marginTop: 0 }}
+                    onClick={() => handleStatusChange(selectedIssue.id, 'Resolved')}
+                    disabled={updatingId === selectedIssue.id}
+                  >
+                    ✓ Save & Resolve Cluster
+                  </button>
+                </div>
+
+                <button type="button" className="secondary-button" style={{ marginTop: 0 }} onClick={handleCloseDetails}>
+                  Close
+                </button>
               </div>
-            )}
-
-            {selectedIssue.resolvedAt && (
-              <div style={{ padding: '12px 16px', background: '#ecfdf5', borderRadius: '8px', margin: '16px 0', color: '#065f46', fontSize: '13px' }}>
-                <strong>Resolved:</strong> {formatDate(selectedIssue.resolvedAt)} {selectedIssue.resolvedBy ? `by official (${selectedIssue.resolvedBy})` : ''}
-              </div>
-            )}
-
-            {/* Modal Actions */}
-            <div style={{ display: 'flex', gap: '10px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
-              {(selectedIssue.status || '').toLowerCase() !== 'in progress' && (
-                <button
-                  type="button"
-                  className="btn-gov-work"
-                  disabled={updatingId === selectedIssue.id}
-                  onClick={() => handleStatusChange(selectedIssue.id, 'In Progress')}
-                >
-                  ⚙️ Set In Progress
-                </button>
-              )}
-
-              {(selectedIssue.status || '').toLowerCase() !== 'resolved' && (
-                <button
-                  type="button"
-                  className="btn-gov-resolve"
-                  disabled={updatingId === selectedIssue.id}
-                  onClick={() => handleStatusChange(selectedIssue.id, 'Resolved')}
-                >
-                  ✓ Mark as Resolved
-                </button>
-              )}
-
-              {(selectedIssue.status || '').toLowerCase() === 'resolved' && (
-                <button
-                  type="button"
-                  className="btn-gov-work"
-                  disabled={updatingId === selectedIssue.id}
-                  onClick={() => handleStatusChange(selectedIssue.id, 'Pending')}
-                >
-                  ⏳ Re-open as Pending
-                </button>
-              )}
-
-              <button
-                type="button"
-                className="secondary-button"
-                style={{ marginLeft: 'auto', marginTop: 0 }}
-                onClick={() => setSelectedIssue(null)}
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

@@ -6,7 +6,8 @@ import {
   loginUser,
   loginWithGoogle,
   logoutUser,
-  getUserProfile
+  getUserProfile,
+  updateUserLanguage
 } from '../firebase/auth.js'
 
 const AuthContext = createContext(null)
@@ -16,33 +17,101 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Language preference state
+  const [preferredLanguage, setPreferredLanguage] = useState(() => {
+    return localStorage.getItem('civicpulse_language') || 'English'
+  })
+
+  const setLanguage = async (newLanguage) => {
+    if (!newLanguage) return
+    setPreferredLanguage(newLanguage)
+    localStorage.setItem('civicpulse_language', newLanguage)
+
+    if (currentUser?.uid) {
+      try {
+        await updateUserLanguage(currentUser.uid, newLanguage)
+        setUserProfile((prev) => (prev ? { ...prev, preferredLanguage: newLanguage } : null))
+      } catch (err) {
+        console.error('Failed to sync language to Firestore profile:', err)
+      }
+    }
+  }
+
+  const saveUserLanguage = async (lang) => {
+    await setLanguage(lang)
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setLoading(true)
-      if (user) {
-        try {
+      try {
+        if (user) {
+          console.log('[AUTH] onAuthStateChanged user detected:', user.uid)
           const profile = await getUserProfile(user.uid)
           setUserProfile(profile)
           setCurrentUser(user)
-        } catch (error) {
-          console.error('Failed to load user profile:', error)
+
+          if (profile?.preferredLanguage) {
+            setPreferredLanguage(profile.preferredLanguage)
+            localStorage.setItem('civicpulse_language', profile.preferredLanguage)
+          }
+          console.log('[AUTH] Authentication flow complete')
+        } else {
+          setCurrentUser(null)
           setUserProfile(null)
-          setCurrentUser(user)
         }
-      } else {
-        setCurrentUser(null)
+      } catch (error) {
+        console.error('[AUTH ERROR]', {
+          code: error?.code,
+          message: error?.message,
+          operation: 'onAuthStateChanged (getUserProfile)',
+          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || ''
+        })
         setUserProfile(null)
+        setCurrentUser(user || null)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     })
 
     return () => unsubscribe()
   }, [])
 
-  const register = async (name, email, password, country, state, localArea) => {
+  // Supports both object parameter and legacy positional parameters
+  const register = async (
+    nameOrOptions,
+    email,
+    password,
+    country,
+    state,
+    localArea,
+    district = '',
+    idType = 'Citizen Government ID',
+    idNumber = '',
+    idDocumentUrl = null
+  ) => {
     setLoading(true)
     try {
-      const user = await registerUser(name, email, password, country, state, localArea)
+      let payload
+      if (typeof nameOrOptions === 'object' && nameOrOptions !== null) {
+        payload = nameOrOptions
+      } else {
+        payload = {
+          name: nameOrOptions,
+          email,
+          password,
+          country,
+          state,
+          district,
+          localArea,
+          idType,
+          idNumber,
+          idDocumentUrl
+        }
+      }
+
+      const user = await registerUser(payload)
       const profile = await getUserProfile(user.uid)
       setUserProfile(profile)
       setCurrentUser(user)
@@ -59,6 +128,10 @@ export function AuthProvider({ children }) {
       const profile = await getUserProfile(user.uid)
       setUserProfile(profile)
       setCurrentUser(user)
+      if (profile?.preferredLanguage) {
+        setPreferredLanguage(profile.preferredLanguage)
+        localStorage.setItem('civicpulse_language', profile.preferredLanguage)
+      }
       return user
     } finally {
       setLoading(false)
@@ -72,6 +145,10 @@ export function AuthProvider({ children }) {
       const profile = await getUserProfile(user.uid)
       setUserProfile(profile)
       setCurrentUser(user)
+      if (profile?.preferredLanguage) {
+        setPreferredLanguage(profile.preferredLanguage)
+        localStorage.setItem('civicpulse_language', profile.preferredLanguage)
+      }
       return user
     } finally {
       setLoading(false)
@@ -79,14 +156,22 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    await logoutUser()
-    setCurrentUser(null)
-    setUserProfile(null)
+    setLoading(true)
+    try {
+      await logoutUser()
+      setCurrentUser(null)
+      setUserProfile(null)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const value = {
     currentUser,
     userProfile,
+    preferredLanguage,
+    setLanguage,
+    saveUserLanguage,
     loading,
     register,
     login,
@@ -96,7 +181,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   )
 }
