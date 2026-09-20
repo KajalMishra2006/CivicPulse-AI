@@ -1,4 +1,5 @@
-import { SUPPORTED_LANGUAGES, getLanguageMetadata } from './utils/speech.js'
+import { SUPPORTED_LANGUAGES } from './utils/speech.js'
+import { IconGlobe, IconChevronDown } from './Icons.jsx'
 
 function LanguageSelector({
   currentLanguage = 'English',
@@ -7,8 +8,6 @@ function LanguageSelector({
   variant = 'light', // 'light' (for dark headers) | 'dark' (for white cards)
   className = ''
 }) {
-  const meta = getLanguageMetadata(currentLanguage)
-
   const isLight = variant === 'light'
 
   return (
@@ -17,7 +16,7 @@ function LanguageSelector({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '6px',
+        gap: '8px',
         position: 'relative'
       }}
     >
@@ -25,9 +24,10 @@ function LanguageSelector({
         <span
           className="lang-label"
           style={{
-            fontSize: '12px',
+            fontSize: '12.5px',
             fontWeight: '600',
-            color: isLight ? '#cbd5e1' : '#64748b'
+            color: isLight ? '#cbd5e1' : '#64748b',
+            letterSpacing: '0.2px'
           }}
         >
           {label}:
@@ -42,15 +42,13 @@ function LanguageSelector({
           gap: '6px',
           background: isLight ? 'rgba(255, 255, 255, 0.12)' : '#ffffff',
           border: isLight ? '1px solid rgba(255, 255, 255, 0.22)' : '1px solid #cbd5e1',
-          borderRadius: '20px',
-          padding: '4px 10px',
-          boxShadow: isLight ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
-          transition: 'all 0.2s ease'
+          borderRadius: '9999px',
+          padding: '4px 10px 4px 10px',
+          boxShadow: isLight ? 'none' : '0 1px 3px rgba(7, 27, 58, 0.05)',
+          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
-        <span style={{ fontSize: '14px', lineHeight: 1 }} aria-hidden="true">
-          {meta.flag || '🌐'}
-        </span>
+        <IconGlobe size={15} color={isLight ? '#5eead4' : '#0FA58F'} />
 
         <select
           value={currentLanguage}
@@ -59,13 +57,16 @@ function LanguageSelector({
           style={{
             background: 'transparent',
             border: 'none',
-            color: isLight ? '#ffffff' : '#0f172a',
+            color: isLight ? '#ffffff' : '#071B3A',
             fontSize: '13px',
             fontWeight: '600',
             cursor: 'pointer',
             outline: 'none',
-            paddingRight: '4px',
-            fontFamily: 'inherit'
+            paddingRight: '2px',
+            fontFamily: 'inherit',
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            MozAppearance: 'none'
           }}
         >
           {SUPPORTED_LANGUAGES.map((lang) => (
@@ -73,15 +74,17 @@ function LanguageSelector({
               key={lang.name}
               value={lang.name}
               style={{
-                background: '#0f172a',
+                background: '#071B3A',
                 color: '#ffffff',
                 fontSize: '13px'
               }}
             >
-              {lang.nativeName} ({lang.name})
+              {lang.label || lang.nativeName}
             </option>
           ))}
         </select>
+
+        <IconChevronDown size={13} color={isLight ? '#94a3b8' : '#64748b'} />
       </div>
     </div>
   )

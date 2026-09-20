@@ -13,7 +13,14 @@ import { useState, useMemo } from 'react'
 import { useAuth } from './context/AuthContext.jsx'
 import { formatAuthError } from './firebase/auth.js'
 import { getTranslation } from './utils/translations.js'
-import { getAllStates, getDistrictsForState, getTalukasForDistrict } from './utils/locations.js'
+import {
+  getBricsCountries,
+  getCountryLocationConfig,
+  getLevel1Options,
+  getLevel2Options,
+  getLevel3Options
+} from './utils/locations.js'
+import { IconShield, IconBuilding } from './Icons.jsx'
 import './App.css'
 
 function App() {
@@ -25,25 +32,62 @@ function App() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [mobileNumber, setMobileNumber] = useState('')
-  const country = 'India'
 
-  const allStates = getAllStates()
-  const [state, setState] = useState(allStates[0]?.name || 'Maharashtra')
-
-  const districtList = useMemo(() => {
-    return getDistrictsForState(state)
-  }, [state])
-
-  const [district, setDistrict] = useState('Pune')
-
-  const talukaList = useMemo(() => {
-    return getTalukasForDistrict(state, district)
-  }, [state, district])
-
-  const [taluka, setTaluka] = useState('Haveli')
-
+  // BRICS Country & Dynamic Hierarchical Location States
+  const [country, setCountry] = useState('')
+  const [state, setState] = useState('')
+  const [district, setDistrict] = useState('')
+  const [taluka, setTaluka] = useState('')
   const [localArea, setLocalArea] = useState('')
+
+  const bricsCountries = useMemo(() => getBricsCountries(), [])
+  const countryConfig = useMemo(() => getCountryLocationConfig(country), [country])
+
+  const level1List = useMemo(() => {
+    if (!country) return []
+    return getLevel1Options(country)
+  }, [country])
+
+  const level2List = useMemo(() => {
+    if (!country || !state) return []
+    return getLevel2Options(country, state)
+  }, [country, state])
+
+  const level3List = useMemo(() => {
+    if (!country || !state || !district || !countryConfig.hasLevel3) return []
+    return getLevel3Options(country, state, district)
+  }, [country, state, district, countryConfig.hasLevel3])
+
+  function handleCountryChange(newCountry) {
+    setCountry(newCountry)
+    setState('')
+    setDistrict('')
+    setTaluka('')
+    setLocalArea('')
+    setCountryError('')
+    setStateError('')
+    setDistrictError('')
+    setTalukaError('')
+    setLocalAreaError('')
+  }
+
+  function handleLevel1Change(newState) {
+    setState(newState)
+    setDistrict('')
+    setTaluka('')
+    setStateError('')
+    setDistrictError('')
+    setTalukaError('')
+  }
+
+  function handleLevel2Change(newDistrict) {
+    setDistrict(newDistrict)
+    setTaluka('')
+    setDistrictError('')
+    setTalukaError('')
+  }
 
   // Citizen Identity Document Registration Fields
   const [idType, setIdType] = useState('Citizen Government ID')
@@ -53,7 +97,10 @@ function App() {
 
   const [nameError, setNameError] = useState('')
   const [emailError, setEmailError] = useState('')
+  const [mobileError, setMobileError] = useState('')
   const [passwordError, setPasswordError] = useState('')
+  const [confirmPasswordError, setConfirmPasswordError] = useState('')
+  const [countryError, setCountryError] = useState('')
   const [stateError, setStateError] = useState('')
   const [districtError, setDistrictError] = useState('')
   const [talukaError, setTalukaError] = useState('')
@@ -116,7 +163,10 @@ function App() {
 
     setNameError('')
     setEmailError('')
+    setMobileError('')
     setPasswordError('')
+    setConfirmPasswordError('')
+    setCountryError('')
     setStateError('')
     setDistrictError('')
     setTalukaError('')
@@ -127,7 +177,7 @@ function App() {
     let valid = true
 
     if (name.trim() === '') {
-      setNameError(t.fullNamePlaceholder ? `${t.fullNamePlaceholder} is required` : 'Please enter your name')
+      setNameError(t.fullNamePlaceholder ? `${t.fullNamePlaceholder} is required` : 'Please enter your full name')
       valid = false
     }
 
@@ -137,28 +187,50 @@ function App() {
       valid = false
     }
 
+    if (!mobileNumber || mobileNumber.trim() === '') {
+      setMobileError(t.mobileRequired || 'Mobile number is required.')
+      valid = false
+    }
+
     if (password.length < 8) {
       setPasswordError(t.enterPassword || 'Password must be at least 8 characters')
       valid = false
     }
 
+    if (!confirmPassword) {
+      setConfirmPasswordError(t.confirmPasswordPlaceholder || 'Please confirm your password')
+      valid = false
+    } else if (confirmPassword !== password) {
+      setConfirmPasswordError(t.passwordsDoNotMatch || 'Passwords do not match')
+      valid = false
+    }
+
+    if (!country) {
+      setCountryError(t.selectCountry || 'Please select your country')
+      valid = false
+    }
+
     if (!state) {
-      setStateError(t.selectState || 'Please select your state')
+      const cleanL1 = (countryConfig.level1Label || 'Region').replace('*', '').trim()
+      setStateError(`${cleanL1} is required`)
       valid = false
     }
 
     if (!district) {
-      setDistrictError('Please select your district')
+      const cleanL2 = (countryConfig.level2Label || 'Area / City').replace('*', '').trim()
+      setDistrictError(`${cleanL2} is required`)
       valid = false
     }
 
-    if (!taluka) {
-      setTalukaError('Please select your taluka / ward')
+    if (countryConfig.hasLevel3 && !taluka) {
+      const cleanL3 = (countryConfig.level3Label || 'District / Taluka').replace('*', '').trim()
+      setTalukaError(`${cleanL3} is required`)
       valid = false
     }
 
     if (localArea.trim() === '') {
-      setLocalAreaError(t.enterLocalArea || 'Please enter your local area / ward')
+      const cleanLocal = (countryConfig.localAreaLabel || 'Local Area').replace('*', '').trim()
+      setLocalAreaError(`${cleanLocal} is required`)
       valid = false
     }
 
@@ -181,11 +253,11 @@ function App() {
         name,
         email,
         password,
-        mobileNumber,
+        mobileNumber: mobileNumber.trim(),
         country,
         state,
         district,
-        taluka,
+        taluka: taluka || '',
         localArea,
         idType,
         idNumber: idNumber.trim(),
@@ -377,6 +449,7 @@ function App() {
     return (
       <Login
         onBackToSignup={() => setShowLogin(false)}
+        onLogin={() => setShowLogin(false)}
         onGoToOfficialLogin={() => {
           setShowLogin(false)
           setShowOfficialLogin(true)
@@ -394,14 +467,14 @@ function App() {
           <LanguageSelector
             currentLanguage={activeLanguage}
             onSelectLanguage={setLanguage}
-            variant="light"
-            label={t.preferredLanguage || 'Language'}
+            variant="dark"
+            label={t.preferredLanguage || 'Preferred Language'}
           />
         </div>
 
-        <h1>{t.createAccount || 'Create Your Account'}</h1>
+        <h1>{t.createAccount || 'Create Account'}</h1>
         <p className="signup-description">
-          {t.signupSubtitle || 'Join CivicPulse-AI to report community issues and track municipal progress.'}
+          {t.signupSubtitle || 'Create your CivicPulse account to report and track civic issues.'}
         </p>
 
         {authError && <p className="error-message main-error">{authError}</p>}
@@ -412,7 +485,7 @@ function App() {
             <label>{t.fullName || 'Full Name'} *</label>
             <input
               type="text"
-              placeholder={t.fullNamePlaceholder || 'e.g. Rajesh Sharma'}
+              placeholder={t.fullNamePlaceholder || 'Enter your full name'}
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isSubmitting}
@@ -420,13 +493,13 @@ function App() {
             {nameError && <p className="error-message">{nameError}</p>}
           </div>
 
-          {/* EMAIL & MOBILE */}
+          {/* EMAIL & MOBILE (2 columns) */}
           <div className="form-row-2">
             <div className="location-field">
               <label>{t.emailAddress || 'Email Address'} *</label>
               <input
                 type="email"
-                placeholder={t.emailPlaceholder || 'e.g. rajesh@example.com'}
+                placeholder={t.emailPlaceholder || 'name@example.com'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isSubmitting}
@@ -435,14 +508,18 @@ function App() {
             </div>
 
             <div className="location-field">
-              <label>Mobile Number (Optional)</label>
+              <label>{t.mobileNumber || 'Mobile Number *'}</label>
               <input
                 type="tel"
-                placeholder="e.g. 9876543210"
+                placeholder={t.mobilePlaceholder || 'Enter your mobile number'}
                 value={mobileNumber}
-                onChange={(e) => setMobileNumber(e.target.value)}
+                onChange={(e) => {
+                  setMobileNumber(e.target.value)
+                  if (mobileError) setMobileError('')
+                }}
                 disabled={isSubmitting}
               />
+              {mobileError && <p className="error-message">{mobileError}</p>}
             </div>
           </div>
 
@@ -451,7 +528,7 @@ function App() {
             <label>{t.password || 'Password'} *</label>
             <input
               type="password"
-              placeholder={t.passwordPlaceholder || 'Minimum 8 characters'}
+              placeholder={t.passwordPlaceholder || 'Create a password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isSubmitting}
@@ -459,98 +536,153 @@ function App() {
             {passwordError && <p className="error-message">{passwordError}</p>}
           </div>
 
-          {/* LOCATION JURISDICTION: STATE, DISTRICT, TALUKA, WARD */}
+          {/* CONFIRM PASSWORD */}
+          <div className="location-field">
+            <label>{t.confirmPassword || 'Confirm Password'} *</label>
+            <input
+              type="password"
+              placeholder={t.confirmPasswordPlaceholder || 'Confirm your password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={isSubmitting}
+            />
+            {confirmPasswordError && <p className="error-message">{confirmPasswordError}</p>}
+          </div>
+
+          {/* LOCATION JURISDICTION: COUNTRY & DYNAMIC ADMINISTRATIVE REGIONS */}
           <div className="location-section">
-            <div className="location-field">
-              <label>{t.state || 'State'} *</label>
+            {/* Country Selector */}
+            <div className="location-field" style={{ marginBottom: country ? '14px' : '0' }}>
+              <label>{t.country || 'Country'} *</label>
               <select
-                value={state}
-                onChange={(e) => {
-                  setState(e.target.value)
-                  const dists = getDistrictsForState(e.target.value)
-                  const firstDist = dists[0]?.name || 'Pune'
-                  setDistrict(firstDist)
-                  const talukas = getTalukasForDistrict(e.target.value, firstDist)
-                  setTaluka(talukas[0]?.name || 'Haveli')
-                }}
+                value={country}
+                onChange={(e) => handleCountryChange(e.target.value)}
                 disabled={isSubmitting}
                 className="form-select"
-                style={{ width: '100%', padding: '10px 14px' }}
               >
-                {allStates.map((s) => (
-                  <option key={s.id} value={s.name}>{s.name}</option>
+                <option value="">{t.selectCountry || 'Select your country'}</option>
+                {bricsCountries.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
-              {stateError && <p className="error-message">{stateError}</p>}
+              {countryError && <p className="error-message">{countryError}</p>}
             </div>
 
-            <div className="location-field">
-              <label>District *</label>
-              <select
-                value={district}
-                onChange={(e) => {
-                  setDistrict(e.target.value)
-                  const talukas = getTalukasForDistrict(state, e.target.value)
-                  setTaluka(talukas[0]?.name || 'Haveli')
-                }}
-                disabled={isSubmitting}
-                className="form-select"
-                style={{ width: '100%', padding: '10px 14px' }}
-              >
-                {districtList.map((d) => (
-                  <option key={d.id} value={d.name}>{d.name}</option>
-                ))}
-              </select>
-              {districtError && <p className="error-message">{districtError}</p>}
-            </div>
+            {/* Dynamic Cascading Regions */}
+            {country && (
+              <>
+                <div className="form-row-2">
+                  {/* Level 1 Region */}
+                  <div className="location-field">
+                    <label>{countryConfig.level1Label}</label>
+                    <select
+                      value={state}
+                      onChange={(e) => handleLevel1Change(e.target.value)}
+                      disabled={isSubmitting || level1List.length === 0}
+                      className="form-select"
+                    >
+                      <option value="">{countryConfig.level1Placeholder || 'Select...'}</option>
+                      {level1List.map((r) => (
+                        <option key={r.id} value={r.name}>{r.name}</option>
+                      ))}
+                    </select>
+                    {stateError && <p className="error-message">{stateError}</p>}
+                  </div>
 
-            <div className="location-field">
-              <label>Taluka / Ward *</label>
-              <select
-                value={taluka}
-                onChange={(e) => setTaluka(e.target.value)}
-                disabled={isSubmitting}
-                className="form-select"
-                style={{ width: '100%', padding: '10px 14px' }}
-              >
-                {talukaList.map((t) => (
-                  <option key={t.id} value={t.name}>{t.name}</option>
-                ))}
-              </select>
-              {talukaError && <p className="error-message">{talukaError}</p>}
-            </div>
+                  {/* Level 2 Region */}
+                  <div className="location-field">
+                    <label>{countryConfig.level2Label}</label>
+                    <select
+                      value={district}
+                      onChange={(e) => handleLevel2Change(e.target.value)}
+                      disabled={isSubmitting || !state || level2List.length === 0}
+                      className="form-select"
+                    >
+                      <option value="">{countryConfig.level2Placeholder || 'Select...'}</option>
+                      {level2List.map((d) => (
+                        <option key={d.id} value={d.name}>{d.name}</option>
+                      ))}
+                    </select>
+                    {districtError && <p className="error-message">{districtError}</p>}
+                  </div>
+                </div>
 
-            <div className="location-field">
-              <label>{t.localArea || 'Local Area / Ward'} *</label>
-              <input
-                type="text"
-                placeholder={t.enterLocalArea || 'Neighborhood / Ward'}
-                value={localArea}
-                onChange={(e) => setLocalArea(e.target.value)}
-                disabled={isSubmitting}
-              />
-              {localAreaError && <p className="error-message">{localAreaError}</p>}
-            </div>
+                {countryConfig.hasLevel3 ? (
+                  <div className="form-row-2">
+                    {/* Level 3 Region */}
+                    <div className="location-field">
+                      <label>{countryConfig.level3Label}</label>
+                      <select
+                        value={taluka}
+                        onChange={(e) => {
+                          setTaluka(e.target.value)
+                          setTalukaError('')
+                        }}
+                        disabled={isSubmitting || !district || level3List.length === 0}
+                        className="form-select"
+                      >
+                        <option value="">{countryConfig.level3Placeholder || 'Select...'}</option>
+                        {level3List.map((tlk) => (
+                          <option key={tlk.id} value={tlk.name}>{tlk.name}</option>
+                        ))}
+                      </select>
+                      {talukaError && <p className="error-message">{talukaError}</p>}
+                    </div>
+
+                    {/* Local Area */}
+                    <div className="location-field">
+                      <label>{countryConfig.localAreaLabel}</label>
+                      <input
+                        type="text"
+                        placeholder={countryConfig.localAreaPlaceholder}
+                        value={localArea}
+                        onChange={(e) => {
+                          setLocalArea(e.target.value)
+                          setLocalAreaError('')
+                        }}
+                        disabled={isSubmitting}
+                      />
+                      {localAreaError && <p className="error-message">{localAreaError}</p>}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="location-field" style={{ marginTop: '12px' }}>
+                    <label>{countryConfig.localAreaLabel}</label>
+                    <input
+                      type="text"
+                      placeholder={countryConfig.localAreaPlaceholder}
+                      value={localArea}
+                      onChange={(e) => {
+                        setLocalArea(e.target.value)
+                        setLocalAreaError('')
+                      }}
+                      disabled={isSubmitting}
+                    />
+                    {localAreaError && <p className="error-message">{localAreaError}</p>}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* CITIZEN IDENTITY VERIFICATION SECTION */}
-          <div style={{ marginTop: '14px', padding: '14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-            <label style={{ fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>🛡️</span> Citizen Identity Verification Document
+          <div className="citizen-verification-card">
+            <label className="verification-card-title">
+              <IconShield size={18} color="#0FA58F" />
+              <span>{t.citizenIdentityVerification || 'Citizen Identity Verification Document'}</span>
             </label>
-            <p style={{ margin: '4px 0 10px 0', fontSize: '12px', color: '#64748b' }}>
-              New accounts start as <strong>Pending Verification</strong> and are validated by your taluka's Citizen Access Employee.
+            <p className="verification-card-subtitle">
+              {t.citizenVerificationDesc || "New accounts start as Pending Verification and are validated by your local administrative area's Citizen Access Employee."}
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '10px' }}>
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '4px' }}>Document Type</label>
+            <div className="form-row-2 verification-fields-row">
+              <div className="location-field">
+                <label>{t.documentType || 'Document Type'}</label>
                 <select
                   value={idType}
                   onChange={(e) => setIdType(e.target.value)}
                   disabled={isSubmitting}
                   className="form-select"
-                  style={{ width: '100%', padding: '8px 12px', fontSize: '13px' }}
                 >
                   <option value="Citizen Government ID">Government ID Card</option>
                   <option value="Voter ID">Voter ID</option>
@@ -559,45 +691,51 @@ function App() {
                 </select>
               </div>
 
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '4px' }}>ID Number (Optional)</label>
+              <div className="location-field">
+                <label>{t.idNumberOptional || 'ID Number (Optional)'}</label>
                 <input
                   type="text"
-                  placeholder="e.g. DL-1420110012345"
+                  placeholder={t.idNumberPlaceholder || 'e.g. DL-1420110012345'}
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}
                   disabled={isSubmitting}
-                  style={{ width: '100%', padding: '8px 12px', fontSize: '13px', boxSizing: 'border-box' }}
                 />
               </div>
             </div>
 
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={handleIdFileChange}
-              disabled={isSubmitting}
-              className="form-file-input"
-            />
+            <div className="file-upload-wrapper">
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={handleIdFileChange}
+                disabled={isSubmitting}
+                className="form-file-input"
+              />
+            </div>
 
             {idPreview && (
-              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <img src={idPreview} alt="Citizen ID Preview" style={{ maxHeight: '70px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+              <div className="id-preview-container">
+                <img src={idPreview} alt="Citizen ID Preview" className="id-preview-image" />
                 <button type="button" className="remove-image-btn" onClick={handleRemoveIdFile}>✕ Remove</button>
               </div>
             )}
 
             {idFile && !idPreview && (
-              <div style={{ marginTop: '6px', fontSize: '12px', color: '#0369a1' }}>
-                📄 {idFile.name} <button type="button" className="remove-image-btn" onClick={handleRemoveIdFile}>✕ Remove</button>
+              <div className="id-file-badge">
+                <span>📄 {idFile.name}</span>
+                <button type="button" className="remove-image-btn" onClick={handleRemoveIdFile}>✕ Remove</button>
               </div>
             )}
 
             {idError && <p className="error-message">{idError}</p>}
           </div>
 
-          <button type="submit" disabled={isSubmitting} style={{ marginTop: '16px' }}>
-            {isSubmitting ? (t.creatingAccount || 'Submitting Registration...') : (t.createAccount || 'Register Citizen Account')}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="signup-submit-button primary-button"
+          >
+            {isSubmitting ? (t.creatingAccount || 'Creating Account...') : (t.createAccount || 'Create Account')}
           </button>
         </form>
 
@@ -611,12 +749,17 @@ function App() {
           onClick={handleGoogleSignIn}
           disabled={isSubmitting}
         >
-          <span className="google-icon">G</span>
-          {t.signUpWithGoogle || 'Sign up with Google'}
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0 }}>
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>{t.continueWithGoogle || 'Continue with Google'}</span>
         </button>
 
         <p className="login-text">
-          {t.alreadyHaveAccount || 'Already have an account?'}
+          {t.alreadyHaveAccount || 'Already have an account?'}{' '}
           <button type="button" onClick={() => setShowLogin(true)}>
             {t.signIn || 'Sign In'}
           </button>
@@ -624,14 +767,15 @@ function App() {
 
         <div className="official-link-section">
           <p className="official-link-text">
-            {t.areYouOfficial || 'Are you a government official or municipal officer?'}
+            {t.areYouOfficial || 'Are you a Government Official?'}
           </p>
           <button
             type="button"
             className="official-login-btn"
             onClick={() => setShowOfficialLogin(true)}
           >
-            🏛️ {t.officialSignInBtn || 'Government Official Sign In / Request Access'} →
+            <IconBuilding size={16} />
+            <span>{t.officialSignInBtn || 'Official Sign In →'}</span>
           </button>
         </div>
       </div>

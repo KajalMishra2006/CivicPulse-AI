@@ -15,6 +15,16 @@ import {
   translateStatus,
   translatePriority
 } from './utils/translations.js'
+import {
+  IconBuilding,
+  IconClipboard,
+  IconClock,
+  IconActivity,
+  IconCheckCircle,
+  IconPlusCircle,
+  IconFolder,
+  IconLogOut
+} from './Icons.jsx'
 import './App.css'
 
 function Dashboard({ onLogout }) {
@@ -232,7 +242,7 @@ function Dashboard({ onLogout }) {
                 style={{ marginTop: '16px' }}
                 onClick={() => { setShowIssues(false); setShowReport(true); }}
               >
-                {t.reportAnIssueBtn || '+ Report an Issue'}
+                {(t.reportAnIssueBtn || 'Report an Issue').replace(/^\+\s*/, '')}
               </button>
             </div>
           ) : (
@@ -330,7 +340,8 @@ function Dashboard({ onLogout }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <h2>CivicPulse<span className="brand-accent">-AI</span></h2>
           <span className="citizen-badge">
-            🏛️ {t.citizen || 'Citizen Portal'}
+            <IconBuilding size={14} />
+            <span>{t.citizen || 'Citizen Portal'}</span>
           </span>
         </div>
 
@@ -343,14 +354,14 @@ function Dashboard({ onLogout }) {
           />
 
           <div className="user-profile-tag">
-            <span>{userProfile?.name || currentUser?.displayName || currentUser?.email}</span>
+            <span className="user-name-text">{userProfile?.name || currentUser?.displayName || currentUser?.email}</span>
             <button
               type="button"
-              className="secondary-button"
-              style={{ marginTop: 0, padding: '6px 12px', fontSize: '13px' }}
+              className="navbar-logout-btn"
               onClick={handleLogoutClick}
             >
-              {t.logout || 'Logout'}
+              <IconLogOut size={13} />
+              <span>{t.logout || 'Logout'}</span>
             </button>
           </div>
         </div>
@@ -373,7 +384,8 @@ function Dashboard({ onLogout }) {
               className="primary-button"
               onClick={() => setShowReport(true)}
             >
-              {t.reportAnIssueBtn || '+ Report an Issue'}
+              <IconPlusCircle size={17} />
+              <span>{(t.reportAnIssueBtn || 'Report an Issue').replace(/^\+\s*/, '')}</span>
             </button>
 
             <button
@@ -381,57 +393,50 @@ function Dashboard({ onLogout }) {
               className="secondary-button"
               onClick={() => setShowIssues(true)}
             >
-              {t.viewMyIssuesBtn || 'View My Issues'}
+              <IconFolder size={17} />
+              <span>{t.viewMyIssuesBtn || 'View My Issues'}</span>
             </button>
           </div>
         </section>
 
         {/* CITIZEN IDENTITY VERIFICATION BANNER / CARD */}
-        <section style={{ margin: '20px 0', padding: '16px 20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '24px' }}>🛡️</span>
-              <div>
-                <strong style={{ fontSize: '15px', color: '#0f172a', display: 'block' }}>
-                  Citizen Identity Verification
-                </strong>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>
-                  {identityStatus === 'verified' && '✓ Verified Account — One verified identity per citizen'}
-                  {identityStatus === 'pending' && '⏳ Verification in review by system administrator'}
-                  {identityStatus === 'rejected' && `❌ Verification Rejected: ${userProfile?.identityRejectionReason || 'Please resubmit valid document'}`}
-                  {identityStatus === 'unverified' && 'Verify your government identity document to secure your citizen account.'}
-                </span>
-              </div>
+        <section className="citizen-id-section">
+          <div className="citizen-id-content">
+            <div className="citizen-id-icon-wrap">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
             </div>
+            <strong className="citizen-id-title">
+              Citizen Identity Verification
+            </strong>
+            <span className="citizen-id-subtitle">
+              {identityStatus === 'verified' && '✓ Verified Account — One verified identity per citizen'}
+              {identityStatus === 'pending' && '⏳ Verification in review by system administrator'}
+              {identityStatus === 'rejected' && `❌ Verification Rejected: ${userProfile?.identityRejectionReason || 'Please resubmit valid document'}`}
+              {identityStatus === 'unverified' && 'Verify your government identity document to secure your citizen account.'}
+            </span>
+          </div>
 
-            <div>
-              {identityStatus === 'verified' ? (
-                <span style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>
-                  ✓ Identity Verified
-                </span>
-              ) : identityStatus === 'pending' ? (
-                <span style={{ background: '#fefce8', color: '#854d0e', border: '1px solid #fef08a', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>
-                  ⏳ Verification Pending
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowIdentityForm((prev) => !prev)}
-                  style={{
-                    background: '#0284c7',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '8px 16px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {showIdentityForm ? 'Cancel' : '🛡️ Verify Identity'}
-                </button>
-              )}
-            </div>
+          <div className="citizen-id-badge-wrap">
+            {identityStatus === 'verified' ? (
+              <span className="citizen-id-badge-verified">
+                ✓ Identity Verified
+              </span>
+            ) : identityStatus === 'pending' ? (
+              <span className="citizen-id-badge-pending">
+                ⏳ Verification Pending
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="citizen-id-btn"
+                onClick={() => setShowIdentityForm((prev) => !prev)}
+              >
+                {showIdentityForm ? 'Cancel' : 'Verify Identity'}
+              </button>
+            )}
           </div>
 
           {idVerifySuccess && (
@@ -540,47 +545,39 @@ function Dashboard({ onLogout }) {
 
         {/* 3. METRICS / STATS SECTION */}
         <section className="stats-container-4">
-          <div className="stat-card">
-            <span className="stat-icon">📋</span>
+          <div className="stat-card stat-card-reported">
+            <div className="stat-icon-wrapper stat-icon-reported">
+              <IconClipboard size={24} />
+            </div>
             <h2>{stats.total}</h2>
             <p>{t.issuesReported || 'Issues Reported'}</p>
           </div>
 
-          <div className="stat-card">
-            <span className="stat-icon">⏳</span>
+          <div className="stat-card stat-card-pending">
+            <div className="stat-icon-wrapper stat-icon-pending">
+              <IconClock size={24} />
+            </div>
             <h2>{stats.pending}</h2>
             <p>{t.pendingIssues || 'Pending Issues'}</p>
           </div>
 
-          <div className="stat-card">
-            <span className="stat-icon">⚙️</span>
+          <div className="stat-card stat-card-inprogress">
+            <div className="stat-icon-wrapper stat-icon-inprogress">
+              <IconActivity size={24} />
+            </div>
             <h2>{stats.inProgress}</h2>
             <p>{t.inProgress || 'In Progress'}</p>
           </div>
 
-          <div className="stat-card">
-            <span className="stat-icon">✅</span>
+          <div className="stat-card stat-card-resolved">
+            <div className="stat-icon-wrapper stat-icon-resolved">
+              <IconCheckCircle size={24} />
+            </div>
             <h2>{stats.resolved}</h2>
             <p>{t.issuesResolved || 'Issues Resolved'}</p>
           </div>
         </section>
 
-        {/* 4. ACTION CARDS */}
-        <section className="action-cards-grid">
-          <div className="action-card" onClick={() => setShowReport(true)}>
-            <span className="action-card-icon">➕</span>
-            <h3>{t.reportCardTitle || 'Report a Civic Issue'}</h3>
-            <p>{t.reportCardDesc || 'Found a pothole, garbage problem, broken streetlight or another civic issue?'}</p>
-            <span className="action-card-link">{t.reportAnIssueBtn || '+ Report an Issue'} →</span>
-          </div>
-
-          <div className="action-card" onClick={() => setShowIssues(true)}>
-            <span className="action-card-icon">📂</span>
-            <h3>{t.trackCardTitle || 'Track Your Issues'}</h3>
-            <p>{t.trackCardDesc || 'Check the status and AI triage of the issues you have reported.'}</p>
-            <span className="action-card-link">{t.viewMyIssuesBtn || 'View My Issues'} →</span>
-          </div>
-        </section>
       </main>
 
       {/* Language Onboarding / Selection Modal if invoked */}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from './context/AuthContext.jsx'
 import { formatAuthError } from './firebase/auth.js'
+import { IconBuilding, IconShield, IconArrowLeft, IconArrowRight } from './Icons.jsx'
 import './App.css'
 
 function OfficialLogin({ onBackToCitizenLogin, onGoToVerificationRequest }) {
@@ -43,15 +44,34 @@ function OfficialLogin({ onBackToCitizenLogin, onGoToVerificationRequest }) {
           type="button"
           className="back-button-styled"
           onClick={onBackToCitizenLogin}
-          style={{ marginBottom: '16px' }}
+          style={{ marginBottom: '18px' }}
         >
-          ← Back to Citizen Portal
+          <IconArrowLeft size={15} />
+          <span>Back to Citizen Portal</span>
         </button>
 
-        <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-          <span style={{ fontSize: '32px' }}>🏛️</span>
-          <h1 style={{ margin: '8px 0 4px 0', fontSize: '24px' }}>Government Official Sign In</h1>
-          <p className="signup-description" style={{ margin: 0 }}>
+        <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+          <div
+            className="auth-icon-badge"
+            style={{
+              width: '54px',
+              height: '54px',
+              borderRadius: '14px',
+              background: 'rgba(15, 165, 143, 0.1)',
+              border: '1px solid rgba(15, 165, 143, 0.25)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#0FA58F',
+              marginBottom: '10px'
+            }}
+          >
+            <IconBuilding size={26} />
+          </div>
+          <h1 style={{ margin: '0 0 6px 0', fontSize: '24px', color: '#071B3A', fontWeight: 800 }}>
+            Government Official Sign In
+          </h1>
+          <p className="signup-description" style={{ margin: 0, fontSize: '14px', color: '#64748b', lineHeight: 1.5 }}>
             Unified portal for Super Admins, State Admins, District Admins, Citizen Access Staff, and Issue Resolution Officers.
           </p>
         </div>
@@ -107,7 +127,9 @@ function OfficialLogin({ onBackToCitizenLogin, onGoToVerificationRequest }) {
             style={{ width: '100%', marginTop: 0 }}
             onClick={() => onGoToVerificationRequest(email, '')}
           >
-            🛡️ Request Government Employee / Admin Access →
+            <IconShield size={16} />
+            <span>Request Government Employee / Admin Access</span>
+            <IconArrowRight size={15} />
           </button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import {
   loginUser,
   loginWithGoogle,
   logoutUser,
+  sendUserPasswordResetEmail,
   getUserProfile,
   updateUserLanguage
 } from '../firebase/auth.js'
@@ -91,79 +92,63 @@ export function AuthProvider({ children }) {
     idNumber = '',
     idDocumentUrl = null
   ) => {
-    setLoading(true)
-    try {
-      let payload
-      if (typeof nameOrOptions === 'object' && nameOrOptions !== null) {
-        payload = nameOrOptions
-      } else {
-        payload = {
-          name: nameOrOptions,
-          email,
-          password,
-          country,
-          state,
-          district,
-          localArea,
-          idType,
-          idNumber,
-          idDocumentUrl
-        }
+    let payload
+    if (typeof nameOrOptions === 'object' && nameOrOptions !== null) {
+      payload = nameOrOptions
+    } else {
+      payload = {
+        name: nameOrOptions,
+        email,
+        password,
+        country,
+        state,
+        district,
+        localArea,
+        idType,
+        idNumber,
+        idDocumentUrl
       }
-
-      const user = await registerUser(payload)
-      const profile = await getUserProfile(user.uid)
-      setUserProfile(profile)
-      setCurrentUser(user)
-      return user
-    } finally {
-      setLoading(false)
     }
+
+    const user = await registerUser(payload)
+    const profile = await getUserProfile(user.uid)
+    setUserProfile(profile)
+    setCurrentUser(user)
+    return user
   }
 
   const login = async (email, password) => {
-    setLoading(true)
-    try {
-      const user = await loginUser(email, password)
-      const profile = await getUserProfile(user.uid)
-      setUserProfile(profile)
-      setCurrentUser(user)
-      if (profile?.preferredLanguage) {
-        setPreferredLanguage(profile.preferredLanguage)
-        localStorage.setItem('civicpulse_language', profile.preferredLanguage)
-      }
-      return user
-    } finally {
-      setLoading(false)
+    const user = await loginUser(email, password)
+    const profile = await getUserProfile(user.uid)
+    setUserProfile(profile)
+    setCurrentUser(user)
+    if (profile?.preferredLanguage) {
+      setPreferredLanguage(profile.preferredLanguage)
+      localStorage.setItem('civicpulse_language', profile.preferredLanguage)
     }
+    return user
   }
 
   const googleLogin = async () => {
-    setLoading(true)
-    try {
-      const user = await loginWithGoogle()
-      const profile = await getUserProfile(user.uid)
-      setUserProfile(profile)
-      setCurrentUser(user)
-      if (profile?.preferredLanguage) {
-        setPreferredLanguage(profile.preferredLanguage)
-        localStorage.setItem('civicpulse_language', profile.preferredLanguage)
-      }
-      return user
-    } finally {
-      setLoading(false)
+    const user = await loginWithGoogle()
+    const profile = await getUserProfile(user.uid)
+    setUserProfile(profile)
+    setCurrentUser(user)
+    if (profile?.preferredLanguage) {
+      setPreferredLanguage(profile.preferredLanguage)
+      localStorage.setItem('civicpulse_language', profile.preferredLanguage)
     }
+    return user
   }
 
   const logout = async () => {
-    setLoading(true)
-    try {
-      await logoutUser()
-      setCurrentUser(null)
-      setUserProfile(null)
-    } finally {
-      setLoading(false)
-    }
+    await logoutUser()
+    setCurrentUser(null)
+    setUserProfile(null)
+  }
+
+  const sendPasswordReset = async (email) => {
+    return sendUserPasswordResetEmail(email)
   }
 
   const value = {
@@ -176,12 +161,19 @@ export function AuthProvider({ children }) {
     register,
     login,
     googleLogin,
-    logout
+    logout,
+    sendPasswordReset
   }
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? (
+        <div className="dashboard-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+          <p style={{ color: '#64748b', fontSize: '16px' }}>Loading CivicPulse...</p>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   )
 }

@@ -3,7 +3,8 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth'
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db, googleProvider } from './config.js'
@@ -105,6 +106,23 @@ export async function loginUser(email, password) {
     return userCredential.user
   } catch (err) {
     logAuthError('signInWithEmailAndPassword', err)
+    throw err
+  }
+}
+
+/**
+ * Send password reset email via Firebase Authentication.
+ */
+export async function sendUserPasswordResetEmail(email) {
+  if (!email || !email.trim()) {
+    throw new Error('Please enter a valid email address.')
+  }
+  try {
+    await sendPasswordResetEmail(auth, email.trim())
+    console.log('[AUTH] Firebase password reset email sent:', email.trim())
+    return true
+  } catch (err) {
+    logAuthError('sendPasswordResetEmail', err)
     throw err
   }
 }
@@ -250,29 +268,29 @@ export function formatAuthError(err) {
 
   switch (code) {
     case 'auth/invalid-credential':
-      return 'Invalid email or password. Please verify your credentials and try again.'
     case 'auth/user-not-found':
-      return 'No account found with this official email address.'
     case 'auth/wrong-password':
-      return 'Incorrect password. Please verify and try again.'
-    case 'auth/network-request-failed':
-      return 'Network request failed. Please check your internet connection, proxy, or VPN.'
-    case 'auth/too-many-requests':
-      return 'Access to this account has been temporarily disabled due to many failed login attempts. Please reset your password or try again later.'
-    case 'auth/invalid-api-key':
-      return 'Invalid Firebase API key. Please check your project configuration.'
-    case 'auth/operation-not-allowed':
-      return 'Email/Password sign-in is not enabled in Firebase Console. Please contact the administrator.'
-    case 'auth/email-already-in-use':
-      return 'This email address is already registered. Please log in instead.'
+      return 'Incorrect email or password. Please try again.'
     case 'auth/invalid-email':
       return 'Please enter a valid email address.'
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your internet connection and try again.'
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please try again in a few minutes.'
+    case 'auth/user-disabled':
+      return 'This account has been disabled. Please contact support.'
+    case 'auth/email-already-in-use':
+      return 'This email address is already registered. Please log in instead.'
     case 'auth/weak-password':
       return 'Password is too weak. Please use at least 8 characters.'
-    case 'auth/user-disabled':
-      return 'This account has been disabled by an administrator.'
+    case 'auth/operation-not-allowed':
+      return 'Email/Password sign-in is not enabled in Firebase Console. Please contact the administrator.'
+    case 'auth/invalid-api-key':
+      return 'Invalid Firebase configuration. Please contact the administrator.'
     default:
-      return err.message || 'Authentication error. Please try again.'
+      return err.message && !err.message.includes('auth/')
+        ? err.message
+        : 'Incorrect email or password. Please try again.'
   }
 }
 

@@ -4,14 +4,14 @@
  */
 
 export const SUPPORTED_LANGUAGES = [
-  { code: 'en-IN', name: 'English', nativeName: 'English', flag: '🌐' },
-  { code: 'hi-IN', name: 'Hindi', nativeName: 'हिंदी (Hindi)', flag: '🇮🇳' },
-  { code: 'mr-IN', name: 'Marathi', nativeName: 'मराठी (Marathi)', flag: '🇮🇳' },
-  { code: 'gu-IN', name: 'Gujarati', nativeName: 'ગુજરાતી (Gujarati)', flag: '🇮🇳' },
-  { code: 'ta-IN', name: 'Tamil', nativeName: 'தமிழ் (Tamil)', flag: '🇮🇳' },
-  { code: 'te-IN', name: 'Telugu', nativeName: 'తెలుగు (Telugu)', flag: '🇮🇳' },
-  { code: 'bn-IN', name: 'Bengali', nativeName: 'বাংলা (Bengali)', flag: '🇮🇳' },
-  { code: 'kn-IN', name: 'Kannada', nativeName: 'ಕನ್ನಡ (Kannada)', flag: '🇮🇳' }
+  { code: 'en-IN', name: 'English', nativeName: 'English', label: 'English', flag: '🌐' },
+  { code: 'hi-IN', name: 'Hindi', nativeName: 'हिन्दी (Hindi)', label: 'हिन्दी (Hindi)', flag: '🇮🇳' },
+  { code: 'mr-IN', name: 'Marathi', nativeName: 'मराठी (Marathi)', label: 'मराठी (Marathi)', flag: '🇮🇳' },
+  { code: 'gu-IN', name: 'Gujarati', nativeName: 'ગુજરાતી (Gujarati)', label: 'ગુજરાતી (Gujarati)', flag: '🇮🇳' },
+  { code: 'ta-IN', name: 'Tamil', nativeName: 'தமிழ் (Tamil)', label: 'தமிழ் (Tamil)', flag: '🇮🇳' },
+  { code: 'te-IN', name: 'Telugu', nativeName: 'తెలుగు (Telugu)', label: 'తెలుగు (Telugu)', flag: '🇮🇳' },
+  { code: 'bn-IN', name: 'Bengali', nativeName: 'বাংলা (Bengali)', label: 'বাংলা (Bengali)', flag: '🇮🇳' },
+  { code: 'kn-IN', name: 'Kannada', nativeName: 'ಕನ್ನಡ (Kannada)', label: 'ಕನ್ನಡ (Kannada)', flag: '🇮🇳' }
 ]
 
 /**
@@ -24,6 +24,7 @@ export function getLanguageMetadata(nameOrCode = 'English') {
     (l) => l.name.toLowerCase() === clean ||
            l.code.toLowerCase() === clean ||
            l.nativeName.toLowerCase().includes(clean) ||
+           (l.label && l.label.toLowerCase().includes(clean)) ||
            clean.includes(l.name.toLowerCase())
   )
   return match || SUPPORTED_LANGUAGES[0]

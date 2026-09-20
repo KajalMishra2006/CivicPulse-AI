@@ -9,6 +9,20 @@ import {
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from './firebase/config.js'
 import { GEOGRAPHIC_HIERARCHY, getAllStates } from './utils/locations.js'
+import {
+  IconShield,
+  IconBuilding,
+  IconUsers,
+  IconClipboard,
+  IconClock,
+  IconActivity,
+  IconCheckCircle,
+  IconBarChart,
+  IconMap,
+  IconMapPin,
+  IconLogOut,
+  IconXCircle
+} from './Icons.jsx'
 import './App.css'
 
 function SuperAdminDashboard({ onLogout }) {
@@ -238,8 +252,9 @@ function SuperAdminDashboard({ onLogout }) {
       <nav className="navbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
           <h2>CivicPulse<span className="brand-accent">-AI</span></h2>
-          <span className="official-badge" style={{ background: '#4338ca' }}>
-            National Super Admin Command
+          <span className="official-badge" style={{ background: '#4338ca', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <IconShield size={14} />
+            <span>National Super Admin Command</span>
           </span>
           <span style={{ fontSize: '13px', background: '#e0e7ff', color: '#3730a3', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
             🇮🇳 All States & Territories
@@ -247,25 +262,25 @@ function SuperAdminDashboard({ onLogout }) {
         </div>
 
         <div className="official-user-tag">
-          <span>{userProfile?.name || currentUser?.email || 'Super Admin'}</span>
+          <span className="user-name-text">{userProfile?.name || currentUser?.email || 'Super Admin'}</span>
           <button
             type="button"
-            className="secondary-button"
-            style={{ marginTop: 0 }}
+            className="navbar-logout-btn"
             onClick={handleLogoutClick}
           >
-            Logout
+            <IconLogOut size={13} />
+            <span>Logout</span>
           </button>
         </div>
       </nav>
 
       {/* 2. MAIN VIEWPORT */}
       <main className="dashboard-content">
-        <section className="hero-section" style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', color: 'white' }}>
+        <section className="hero-section superadmin-hero">
           <div>
-            <p className="welcome-label" style={{ color: '#818cf8' }}>NATIONAL GOVERNANCE & HIERARCHY OVERSIGHT</p>
-            <h1 style={{ color: 'white' }}>Super Admin Apex Portal</h1>
-            <p style={{ color: '#c7d2fe' }}>
+            <p className="welcome-label eyebrow-heading">NATIONAL GOVERNANCE & HIERARCHY OVERSIGHT</p>
+            <h1 className="superadmin-hero-title">Super Admin Apex Portal</h1>
+            <p className="superadmin-hero-subtitle">
               High-level strategic administration. Appoint State Administrators, monitor state performance, and enforce nationwide RBAC policies.
             </p>
           </div>
@@ -280,41 +295,41 @@ function SuperAdminDashboard({ onLogout }) {
         {actionError && <p className="error-message main-error">{actionError}</p>}
 
         {/* 3. NAVIGATION TABS */}
-        <div style={{ display: 'flex', gap: '10px', margin: '20px 0', flexWrap: 'wrap' }}>
+        <div className="superadmin-tabs">
           <button
             type="button"
-            className={`filter-btn ${activeTab === 'overview' ? 'active' : ''}`}
+            className={`superadmin-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
-            style={{ padding: '10px 18px', fontSize: '13px', fontWeight: '700' }}
           >
-            📊 National Overview & Analytics
+            <IconBarChart size={16} />
+            <span>National Overview & Analytics</span>
           </button>
 
           <button
             type="button"
-            className={`filter-btn ${activeTab === 'state_admins' ? 'active' : ''}`}
+            className={`superadmin-tab-btn ${activeTab === 'state_admins' ? 'active' : ''}`}
             onClick={() => setActiveTab('state_admins')}
-            style={{ padding: '10px 18px', fontSize: '13px', fontWeight: '700' }}
           >
-            🏛️ State Admins Management ({pendingStateAdminRequests.length} Pending)
+            <IconBuilding size={16} />
+            <span>State Admins Management ({pendingStateAdminRequests.length} Pending)</span>
           </button>
 
           <button
             type="button"
-            className={`filter-btn ${activeTab === 'employees' ? 'active' : ''}`}
+            className={`superadmin-tab-btn ${activeTab === 'employees' ? 'active' : ''}`}
             onClick={() => setActiveTab('employees')}
-            style={{ padding: '10px 18px', fontSize: '13px', fontWeight: '700' }}
           >
-            👮 Government Hierarchy Directory ({employees.length})
+            <IconUsers size={16} />
+            <span>Government Hierarchy Directory ({employees.length})</span>
           </button>
 
           <button
             type="button"
-            className={`filter-btn ${activeTab === 'complaints' ? 'active' : ''}`}
+            className={`superadmin-tab-btn ${activeTab === 'complaints' ? 'active' : ''}`}
             onClick={() => setActiveTab('complaints')}
-            style={{ padding: '10px 18px', fontSize: '13px', fontWeight: '700' }}
           >
-            📋 National Complaints Queue ({totalComplaints})
+            <IconClipboard size={16} />
+            <span>National Complaints Queue ({totalComplaints})</span>
           </button>
         </div>
 
@@ -326,59 +341,77 @@ function SuperAdminDashboard({ onLogout }) {
         ) : activeTab === 'overview' && (
           <>
             {/* TOP 9-METRIC STATS GRID */}
-            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
-              <div className="stat-card" style={{ padding: '16px' }}>
-                <span className="stat-icon">🗺️</span>
+            <section className="superadmin-stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon-wrapper stat-icon-reported">
+                  <IconMap size={22} />
+                </div>
                 <h2>{totalStatesCount}</h2>
                 <p>States / UTs ({stateAdmins.length} Admins)</p>
               </div>
 
-              <div className="stat-card" style={{ padding: '16px' }}>
-                <span className="stat-icon">🏙️</span>
+              <div className="stat-card">
+                <div className="stat-icon-wrapper stat-icon-reported">
+                  <IconBuilding size={22} />
+                </div>
                 <h2>{totalDistrictsCount}</h2>
                 <p>Districts ({districtAdmins.length} Admins)</p>
               </div>
 
-              <div className="stat-card" style={{ padding: '16px' }}>
-                <span className="stat-icon">📍</span>
+              <div className="stat-card">
+                <div className="stat-icon-wrapper stat-icon-reported">
+                  <IconMapPin size={22} />
+                </div>
                 <h2>{totalTalukasCount}</h2>
                 <p>Talukas / Wards</p>
               </div>
 
-              <div className="stat-card" style={{ padding: '16px' }}>
-                <span className="stat-icon">👥</span>
+              <div className="stat-card">
+                <div className="stat-icon-wrapper stat-icon-inprogress">
+                  <IconUsers size={22} />
+                </div>
                 <h2>{citizens.length}</h2>
                 <p>Citizens ({verifiedCitizensCount} Verified)</p>
               </div>
 
-              <div className="stat-card" style={{ padding: '16px' }}>
-                <span className="stat-icon">👮</span>
+              <div className="stat-card">
+                <div className="stat-icon-wrapper stat-icon-inprogress">
+                  <IconShield size={22} />
+                </div>
                 <h2>{employees.length}</h2>
                 <p>Officers ({citizenAccessEmployees.length} Access / {issueResolutionEmployees.length} Field)</p>
               </div>
 
-              <div className="stat-card" style={{ padding: '16px' }}>
-                <span className="stat-icon">📋</span>
+              <div className="stat-card">
+                <div className="stat-icon-wrapper stat-icon-reported">
+                  <IconClipboard size={22} />
+                </div>
                 <h2>{totalComplaints}</h2>
                 <p>Total Complaints</p>
               </div>
 
-              <div className="stat-card" style={{ padding: '16px' }}>
-                <span className="stat-icon">⏳</span>
-                <h2 style={{ color: '#eab308' }}>{pendingComplaints}</h2>
+              <div className="stat-card stat-card-pending">
+                <div className="stat-icon-wrapper stat-icon-pending">
+                  <IconClock size={22} />
+                </div>
+                <h2>{pendingComplaints}</h2>
                 <p>Pending</p>
               </div>
 
-              <div className="stat-card" style={{ padding: '16px' }}>
-                <span className="stat-icon">⚙️</span>
-                <h2 style={{ color: '#0284c7' }}>{inProgressComplaints}</h2>
+              <div className="stat-card stat-card-inprogress">
+                <div className="stat-icon-wrapper stat-icon-inprogress">
+                  <IconActivity size={22} />
+                </div>
+                <h2>{inProgressComplaints}</h2>
                 <p>In Progress</p>
               </div>
 
-              <div className="stat-card" style={{ padding: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                <span className="stat-icon">✅</span>
-                <h2 style={{ color: '#166534' }}>{resolutionRate}%</h2>
-                <p style={{ color: '#15803d', fontWeight: '700' }}>Resolved ({resolvedComplaints})</p>
+              <div className="stat-card stat-card-resolved">
+                <div className="stat-icon-wrapper stat-icon-resolved">
+                  <IconCheckCircle size={22} />
+                </div>
+                <h2>{resolutionRate}%</h2>
+                <p>Resolved ({resolvedComplaints})</p>
               </div>
             </section>
 
@@ -428,41 +461,38 @@ function SuperAdminDashboard({ onLogout }) {
         {activeTab === 'state_admins' && (
           <section>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a' }}>
-                🏛️ State Administrator Appointments & Applications
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#071B3A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <IconBuilding size={20} color="#0FA58F" />
+                <span>State Administrator Appointments & Applications</span>
               </h3>
 
               {/* FILTER SUB-BAR */}
-              <div style={{ display: 'flex', gap: '6px' }}>
+              <div className="filter-pills-bar">
                 <button
                   type="button"
-                  className={`filter-btn ${requestFilter === 'pending' ? 'active' : ''}`}
+                  className={`filter-pill-btn ${requestFilter === 'pending' ? 'active' : ''}`}
                   onClick={() => setRequestFilter('pending')}
-                  style={{ padding: '6px 12px', fontSize: '12px' }}
                 >
                   Pending ({pendingStateAdminRequests.length})
                 </button>
                 <button
                   type="button"
-                  className={`filter-btn ${requestFilter === 'approved' ? 'active' : ''}`}
+                  className={`filter-pill-btn ${requestFilter === 'approved' ? 'active' : ''}`}
                   onClick={() => setRequestFilter('approved')}
-                  style={{ padding: '6px 12px', fontSize: '12px' }}
                 >
                   Approved ({approvedStateAdminRequests.length})
                 </button>
                 <button
                   type="button"
-                  className={`filter-btn ${requestFilter === 'rejected' ? 'active' : ''}`}
+                  className={`filter-pill-btn ${requestFilter === 'rejected' ? 'active' : ''}`}
                   onClick={() => setRequestFilter('rejected')}
-                  style={{ padding: '6px 12px', fontSize: '12px' }}
                 >
                   Rejected ({rejectedStateAdminRequests.length})
                 </button>
                 <button
                   type="button"
-                  className={`filter-btn ${requestFilter === 'all' ? 'active' : ''}`}
+                  className={`filter-pill-btn ${requestFilter === 'all' ? 'active' : ''}`}
                   onClick={() => setRequestFilter('all')}
-                  style={{ padding: '6px 12px', fontSize: '12px' }}
                 >
                   All ({stateAdminRequests.length})
                 </button>
@@ -471,28 +501,38 @@ function SuperAdminDashboard({ onLogout }) {
 
             {/* 3 COUNTER STAT CARDS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-              <div className="stat-card" style={{ padding: '14px', background: '#fffbeb', border: '1px solid #fde68a' }}>
-                <span className="stat-icon">⏳</span>
-                <h2 style={{ color: '#d97706', margin: '4px 0' }}>{pendingStateAdminRequests.length}</h2>
+              <div className="stat-card stat-card-pending" style={{ padding: '16px' }}>
+                <div className="stat-icon-wrapper stat-icon-pending" style={{ width: '40px', height: '40px', marginBottom: '8px' }}>
+                  <IconClock size={20} />
+                </div>
+                <h2 style={{ color: '#d97706', margin: '4px 0', fontSize: '26px' }}>{pendingStateAdminRequests.length}</h2>
                 <p style={{ margin: 0, color: '#92400e', fontWeight: '600' }}>Pending State Admin Requests</p>
               </div>
 
-              <div className="stat-card" style={{ padding: '14px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                <span className="stat-icon">✅</span>
-                <h2 style={{ color: '#16a34a', margin: '4px 0' }}>{approvedStateAdminRequests.length}</h2>
+              <div className="stat-card stat-card-resolved" style={{ padding: '16px' }}>
+                <div className="stat-icon-wrapper stat-icon-resolved" style={{ width: '40px', height: '40px', marginBottom: '8px' }}>
+                  <IconCheckCircle size={20} />
+                </div>
+                <h2 style={{ color: '#16a34a', margin: '4px 0', fontSize: '26px' }}>{approvedStateAdminRequests.length}</h2>
                 <p style={{ margin: 0, color: '#166534', fontWeight: '600' }}>Approved State Admin Requests</p>
               </div>
 
-              <div className="stat-card" style={{ padding: '14px', background: '#fef2f2', border: '1px solid #fecaca' }}>
-                <span className="stat-icon">❌</span>
-                <h2 style={{ color: '#dc2626', margin: '4px 0' }}>{rejectedStateAdminRequests.length}</h2>
+              <div className="stat-card" style={{ padding: '16px', background: '#fef2f2', border: '1px solid #fecaca' }}>
+                <div className="stat-icon-wrapper" style={{ width: '40px', height: '40px', marginBottom: '8px', background: 'rgba(239, 68, 68, 0.12)', color: '#dc2626' }}>
+                  <IconXCircle size={20} />
+                </div>
+                <h2 style={{ color: '#dc2626', margin: '4px 0', fontSize: '26px' }}>{rejectedStateAdminRequests.length}</h2>
                 <p style={{ margin: 0, color: '#991b1b', fontWeight: '600' }}>Rejected State Admin Requests</p>
               </div>
             </div>
 
             {displayedStateAdminRequests.length === 0 ? (
-              <div className="stat-card" style={{ padding: '30px', textAlign: 'center' }}>
-                <p>No {requestFilter !== 'all' ? requestFilter : ''} State Admin requests in queue.</p>
+              <div className="empty-state-card">
+                <div className="empty-state-icon-wrap">
+                  <IconClipboard size={32} />
+                </div>
+                <h3>No {requestFilter !== 'all' ? requestFilter : ''} State Admin requests in queue</h3>
+                <p>There are currently no State Administrator applications matching the selected status filter.</p>
               </div>
             ) : (
               displayedStateAdminRequests.map((req) => {
