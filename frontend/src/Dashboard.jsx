@@ -338,7 +338,13 @@ function Dashboard({ onLogout }) {
       {/* 1. TOP NAVIGATION BAR */}
       <nav className="navbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <h2>CivicPulse<span className="brand-accent">-AI</span></h2>
+          <div
+            className="govbridge-nav-brand"
+            onClick={() => { setShowReport(false); setShowIssues(false); }}
+            title="GovBridge Home"
+          >
+            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
+          </div>
           <span className="citizen-badge">
             <IconBuilding size={14} />
             <span>{t.citizen || 'Citizen Portal'}</span>
@@ -372,7 +378,7 @@ function Dashboard({ onLogout }) {
         <section className="hero-section">
           <div>
             <p className="welcome-label">{t.welcomeSub || 'Make Your Community Better.'}</p>
-            <h1>{t.welcome || 'Welcome to CivicPulse-AI'}</h1>
+            <h1>{t.welcome || 'Welcome to GovBridge'}</h1>
             <p>
               {t.welcomeDesc || 'Report civic problems, track their progress, and help create a better community.'}
             </p>
@@ -509,7 +515,7 @@ function Dashboard({ onLogout }) {
               )}
 
               <div style={{ marginTop: '12px', background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b' }}>
-                🔒 <strong>Privacy Assurance:</strong> Your identity document is used exclusively for one-person-one-account uniqueness and verified by CivicPulse administrators. Raw ID numbers are never stored in plain text and never sent to AI models or translation engines.
+                🔒 <strong>Privacy Assurance:</strong> Your identity document is used exclusively for one-person-one-account uniqueness and verified by GovBridge administrators. Raw ID numbers are never stored in plain text and never sent to AI models or translation engines.
               </div>
 
               <div style={{ marginTop: '14px', display: 'flex', gap: '10px' }}>
@@ -579,6 +585,16 @@ function Dashboard({ onLogout }) {
         </section>
 
       </main>
+
+      {/* 4. GOVBRIDGE FOOTER */}
+      <footer className="govbridge-footer">
+        <div className="govbridge-footer-inner">
+          <div className="govbridge-footer-brand">
+            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-footer-logo" />
+          </div>
+          <p className="govbridge-footer-copy">© {new Date().getFullYear()} GovBridge Civic Platform. All rights reserved.</p>
+        </div>
+      </footer>
 
       {/* Language Onboarding / Selection Modal if invoked */}
       {showLanguageModal && (

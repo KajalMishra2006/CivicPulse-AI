@@ -462,20 +462,35 @@ function App() {
   return (
     <div className="signup-page">
       <div className="signup-card">
-        {/* Language Selection Header Area */}
-        <div className="signup-language-bar">
-          <LanguageSelector
-            currentLanguage={activeLanguage}
-            onSelectLanguage={setLanguage}
-            variant="dark"
-            label={t.preferredLanguage || 'Preferred Language'}
-          />
+        {/* Clean Single-Row Header: Complete GovBridge Logo (Left) & Preferred Language (Right) */}
+        <div className="signup-header header">
+          <div className="brand-logo signup-brand-logo">
+            <img
+              src="/govbridge-logo.png"
+              alt="GovBridge - Bridging Voices. Driving Action."
+              className="govbridge-logo-img signup-header-logo"
+            />
+          </div>
+          <div className="language-selector signup-language-selector">
+            <LanguageSelector
+              currentLanguage={activeLanguage}
+              onSelectLanguage={setLanguage}
+              variant="dark"
+              label={t.preferredLanguage || 'Preferred Language'}
+            />
+          </div>
         </div>
 
-        <h1>{t.createAccount || 'Create Account'}</h1>
-        <p className="signup-description">
-          {t.signupSubtitle || 'Create your CivicPulse account to report and track civic issues.'}
-        </p>
+        {/* Subtle Horizontal Divider Line */}
+        <div className="signup-header-divider" />
+
+        {/* Centered Create Account Section */}
+        <div className="signup-heading-section">
+          <h1>{t.createAccount || 'Create Account'}</h1>
+          <p className="signup-description">
+            {t.signupSubtitle || 'Create your GovBridge account to report and track civic issues.'}
+          </p>
+        </div>
 
         {authError && <p className="error-message main-error">{authError}</p>}
 

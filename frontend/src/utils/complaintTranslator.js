@@ -1,5 +1,5 @@
 /**
- * CivicPulse Dynamic Complaint Translation Service
+ * GovBridge Dynamic Complaint Translation Service
  * Connects securely to the standalone backend /api/translate endpoint.
  * Includes client-side caching to prevent redundant API calls.
  */
@@ -86,7 +86,7 @@ export async function translateComplaintText({ text, sourceLanguage, targetLangu
     return cleanText
   } catch (err) {
     console.error('[TRANSLATE API ERROR]', err)
-    throw new Error('Translation failed. Check that the CivicPulse backend is running.', { cause: err })
+    throw new Error('Translation failed. Check that the GovBridge backend is running.', { cause: err })
   }
 }
 

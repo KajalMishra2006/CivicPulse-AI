@@ -7,7 +7,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import './App.css'
 
 function OfficialVerificationRequest({ initialEmail = '', initialName = '', onBackToOfficialLogin }) {
-  console.log('### CIVICPULSE VERIFICATION DEBUG BUILD ###')
+  console.log('### GOVBRIDGE VERIFICATION DEBUG BUILD ###')
   const { currentUser } = useAuth()
 
   const [name, setName] = useState(initialName || currentUser?.displayName || '')
@@ -234,6 +234,14 @@ function OfficialVerificationRequest({ initialEmail = '', initialName = '', onBa
         >
           ← Back to Official Sign In
         </button>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+          <img
+            src="/govbridge-logo.png"
+            alt="GovBridge"
+            style={{ width: '200px', height: 'auto', maxHeight: '52px', objectFit: 'contain' }}
+          />
+        </div>
 
         <h1>🏛️ Government Employee Access Request</h1>
         <p className="signup-description">

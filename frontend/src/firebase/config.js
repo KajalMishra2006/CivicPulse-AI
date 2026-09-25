@@ -26,7 +26,7 @@ if (typeof window !== 'undefined') {
 
 if (isPlaceholderKey && typeof window !== 'undefined') {
   console.warn(
-    '⚠️ [CivicPulse-AI] Firebase API key is currently set to a placeholder or is missing. ' +
+    '⚠️ [GovBridge] Firebase API key is currently set to a placeholder or is missing. ' +
     'To connect to your live Firebase project, please update your .env file with your real Firebase Web App configuration from the Firebase Console (Project Settings > General > Your apps).'
   )
 }

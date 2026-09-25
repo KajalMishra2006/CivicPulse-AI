@@ -204,7 +204,9 @@ function HigherAuthorityDashboard({ onLogout }) {
       {/* 1. TOP NAVBAR */}
       <nav className="navbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <h2>CivicPulse<span className="brand-accent">-AI</span></h2>
+          <div className="govbridge-nav-brand">
+            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
+          </div>
           <span className="official-badge" style={{ background: '#4338ca' }}>
             Higher Authority Oversight Portal
           </span>

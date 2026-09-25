@@ -1,5 +1,5 @@
 /**
- * CivicPulse Multilingual & Web Speech Service
+ * GovBridge Multilingual & Web Speech Service
  * Provides browser-native Speech-to-Text (STT) and Text-to-Speech (TTS) for Indian languages.
  */
 

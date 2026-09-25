@@ -3,7 +3,7 @@ import { useAuth } from './context/AuthContext.jsx'
 import { formatAuthError, sendUserPasswordResetEmail } from './firebase/auth.js'
 import { getTranslation } from './utils/translations.js'
 import LanguageSelector from './LanguageSelector.jsx'
-import { IconBuilding, IconArrowLeft, IconSparkles, IconGlobe, IconActivity } from './Icons.jsx'
+import { IconArrowLeft } from './Icons.jsx'
 import './App.css'
 
 function Login({ onBackToSignup, onLogin, onGoToOfficialLogin }) {
@@ -126,10 +126,14 @@ function Login({ onBackToSignup, onLogin, onGoToOfficialLogin }) {
     <div className="auth-view-page">
       {/* 1. TOP NAVBAR / HEADER */}
       <header className="auth-top-header">
-        <div className="auth-header-brand" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <h2>
-            CivicPulse<span className="brand-accent">-AI</span>
-          </h2>
+        <div className="auth-header-brand">
+          <div
+            className="govbridge-nav-brand"
+            onClick={onBackToSignup}
+            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+          >
+            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
+          </div>
           <button
             type="button"
             className="auth-nav-link-btn"
@@ -143,71 +147,13 @@ function Login({ onBackToSignup, onLogin, onGoToOfficialLogin }) {
         <LanguageSelector
           currentLanguage={activeLanguage}
           onSelectLanguage={setLanguage}
-          variant="light"
+          variant="dark"
         />
       </header>
 
-      {/* 2. MAIN TWO-COLUMN SECTION */}
-      <div className="auth-split-container">
-        {/* Left Side: Civic-Tech Branding Hero with 3 Differentiating Capabilities */}
-        <div className="auth-hero-left">
-          <div className="auth-hero-badge">
-            <IconBuilding size={14} />
-            <span>Civic Technology Platform</span>
-          </div>
-
-          <h1 className="auth-hero-title">
-            {t.reportTrackImprove || 'Report. Track. Improve.'}
-          </h1>
-
-          <p className="auth-hero-description">
-            {t.loginHeroDesc || 'Empowering citizens and municipal teams to resolve community infrastructure issues faster with AI triage and multilingual accessibility.'}
-          </p>
-
-          <div className="auth-feature-card-grid">
-            {/* Feature 1: Gemini AI Priority Triage */}
-            <div className="auth-feature-card">
-              <div className="feature-card-header">
-                <span className="feature-icon" aria-hidden="true">
-                  <IconSparkles size={18} color="#0FA58F" />
-                </span>
-                <h3>{t.feature1Title || 'Gemini AI Priority Triage'}</h3>
-              </div>
-              <p>
-                {t.feature1Desc || 'AI analyzes reported civic issues and helps prioritize them according to severity and urgency.'}
-              </p>
-            </div>
-
-            {/* Feature 2: 8 Indian Languages + Dynamic Translation */}
-            <div className="auth-feature-card">
-              <div className="feature-card-header">
-                <span className="feature-icon" aria-hidden="true">
-                  <IconGlobe size={18} color="#0284c7" />
-                </span>
-                <h3>{t.feature2Title || '8 Indian Languages + Dynamic Translation'}</h3>
-              </div>
-              <p>
-                {t.feature2Desc || 'Citizens can use the platform in supported Indian languages, while complaint descriptions can be dynamically translated for government teams.'}
-              </p>
-            </div>
-
-            {/* Feature 3: Speech-to-Text & Audio Listeners */}
-            <div className="auth-feature-card">
-              <div className="feature-card-header">
-                <span className="feature-icon" aria-hidden="true">
-                  <IconActivity size={18} color="#0FA58F" />
-                </span>
-                <h3>{t.feature3Title || 'Speech-to-Text & Audio Listeners'}</h3>
-              </div>
-              <p>
-                {t.feature3Desc || 'Citizens can report complaints using voice input and listen to complaint and status updates through audio playback.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Side: Interactive Card (Login or Password Reset) */}
-        <div className="auth-card-right">
+      {/* 2. MAIN CENTERED AUTHENTICATION SECTION */}
+      <main className="auth-center-container">
+        <div className="auth-center-card-wrapper">
           <div className="signup-card auth-card-transition">
             {showForgotPassword ? (
               /* ============================================== */
@@ -230,7 +176,7 @@ function Login({ onBackToSignup, onLogin, onGoToOfficialLogin }) {
 
                 <h1>{t.resetYourPassword || 'Reset Your Password'}</h1>
                 <p className="signup-description">
-                  {t.resetPasswordDesc || "Enter the email address associated with your CivicPulse account and we'll send you a password reset link."}
+                  {t.resetPasswordDesc || "Enter the email address associated with your GovBridge account and we'll send you a password reset link."}
                 </p>
 
                 {resetSent ? (
@@ -433,7 +379,7 @@ function Login({ onBackToSignup, onLogin, onGoToOfficialLogin }) {
             )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

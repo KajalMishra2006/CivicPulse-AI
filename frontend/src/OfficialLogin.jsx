@@ -51,24 +51,14 @@ function OfficialLogin({ onBackToCitizenLogin, onGoToVerificationRequest }) {
         </button>
 
         <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-          <div
-            className="auth-icon-badge"
-            style={{
-              width: '54px',
-              height: '54px',
-              borderRadius: '14px',
-              background: 'rgba(15, 165, 143, 0.1)',
-              border: '1px solid rgba(15, 165, 143, 0.25)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#0FA58F',
-              marginBottom: '10px'
-            }}
-          >
-            <IconBuilding size={26} />
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+            <img
+              src="/govbridge-logo.png"
+              alt="GovBridge"
+              style={{ width: '200px', height: 'auto', maxHeight: '52px', objectFit: 'contain' }}
+            />
           </div>
-          <h1 style={{ margin: '0 0 6px 0', fontSize: '24px', color: '#071B3A', fontWeight: 800 }}>
+          <h1 style={{ margin: '0 0 6px 0', fontSize: '22px', color: '#071B3A', fontWeight: 800 }}>
             Government Official Sign In
           </h1>
           <p className="signup-description" style={{ margin: 0, fontSize: '14px', color: '#64748b', lineHeight: 1.5 }}>
@@ -83,7 +73,7 @@ function OfficialLogin({ onBackToCitizenLogin, onGoToVerificationRequest }) {
             <label>Official Email Address *</label>
             <input
               type="email"
-              placeholder="e.g. officer@gov.in or admin@civicpulse.gov"
+              placeholder="e.g. officer@gov.in or admin@govbridge.gov"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

@@ -1,5 +1,5 @@
 /**
- * CivicPulse Geographical Hierarchy Master Registry
+ * GovBridge Geographical Hierarchy Master Registry
  * Full support for all 11 BRICS Member Countries:
  * Brazil, Russia, India, China, South Africa, Saudi Arabia, Egypt, United Arab Emirates, Ethiopia, Indonesia, Iran.
  */

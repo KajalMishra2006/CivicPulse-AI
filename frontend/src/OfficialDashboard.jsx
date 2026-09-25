@@ -135,8 +135,10 @@ function OfficialDashboard({ onLogout }) {
   return (
     <div className="dashboard-page">
       <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <h2>CivicPulse<span className="brand-accent">-AI</span></h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="govbridge-nav-brand">
+            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
+          </div>
           <span className="official-badge">{t.officialPortal || 'Official Portal'}</span>
         </div>
 

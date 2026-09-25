@@ -168,8 +168,9 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={value}>
       {loading ? (
-        <div className="dashboard-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-          <p style={{ color: '#64748b', fontSize: '16px' }}>Loading CivicPulse...</p>
+        <div className="dashboard-page" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', gap: '12px' }}>
+          <img src="/govbridge-logo.png" alt="GovBridge" style={{ width: '200px', height: 'auto', maxHeight: '52px', objectFit: 'contain' }} />
+          <p style={{ color: '#64748b', fontSize: '16px', fontWeight: 600 }}>Loading GovBridge...</p>
         </div>
       ) : (
         children

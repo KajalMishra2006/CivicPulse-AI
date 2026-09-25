@@ -1,6 +1,6 @@
 
 /**
- * Unified SVG Outline Icons for CivicPulse-AI
+ * Unified SVG Outline Icons for GovBridge
  * Consistent 24x24 viewBox, 2px stroke, sharp modern civic-tech aesthetics.
  * Zero external dependencies.
  */

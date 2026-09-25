@@ -17,17 +17,22 @@ function LanguageSelector({
         display: 'inline-flex',
         alignItems: 'center',
         gap: '8px',
-        position: 'relative'
+        position: 'relative',
+        flexShrink: 0,
+        maxWidth: '100%',
+        boxSizing: 'border-box'
       }}
     >
       {label && (
         <span
           className="lang-label"
           style={{
-            fontSize: '12.5px',
+            fontSize: '12px',
             fontWeight: '600',
             color: isLight ? '#cbd5e1' : '#64748b',
-            letterSpacing: '0.2px'
+            letterSpacing: '0.2px',
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           {label}:
@@ -43,8 +48,11 @@ function LanguageSelector({
           background: isLight ? 'rgba(255, 255, 255, 0.12)' : '#ffffff',
           border: isLight ? '1px solid rgba(255, 255, 255, 0.22)' : '1px solid #cbd5e1',
           borderRadius: '9999px',
-          padding: '4px 10px 4px 10px',
+          padding: '4px 8px',
           boxShadow: isLight ? 'none' : '0 1px 3px rgba(7, 27, 58, 0.05)',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          flexShrink: 0,
           transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
@@ -58,12 +66,13 @@ function LanguageSelector({
             background: 'transparent',
             border: 'none',
             color: isLight ? '#ffffff' : '#071B3A',
-            fontSize: '13px',
+            fontSize: '12.5px',
             fontWeight: '600',
             cursor: 'pointer',
             outline: 'none',
             paddingRight: '2px',
             fontFamily: 'inherit',
+            maxWidth: '110px',
             appearance: 'none',
             WebkitAppearance: 'none',
             MozAppearance: 'none'
