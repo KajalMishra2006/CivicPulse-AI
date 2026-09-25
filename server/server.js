@@ -9,8 +9,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const express = require("express");
 const admin = require("firebase-admin");
+const {GoogleGenAI} = require("@google/genai");
 const {analyzeIssueWithGemini, translateTextWithGemini} = require("./gemini");
-
+const {findMatchingGroup, calculateDistanceMeters, DEFAULT_GROUP_RADIUS_METERS} = require("./grouping");
+const {generateIdentityHash, normalizeGovernmentId} = require("./identity");
 
 // 1. Initialize Firebase Admin SDK
 /**
@@ -63,7 +65,7 @@ const db = admin.firestore(app);
 
 // 2. Setup Express Application
 const server = express();
-server.use(express.json());
+server.use(express.json({limit: "10mb"}));
 
 // Enable CORS for frontend API calls
 server.use((req, res, next) => {
@@ -91,9 +93,11 @@ async function processIssue(issueId, issueData) {
   if (!issueId || !issueData) return;
 
   // Idempotency check: Skip if already processed or currently processing
-  if (issueData.aiProcessedAt ||
-      issueData.aiStatus === "COMPLETED" ||
-      inFlightProcessing.has(issueId)) {
+  if (
+    issueData.aiProcessedAt ||
+    issueData.aiStatus === "COMPLETED" ||
+    inFlightProcessing.has(issueId)
+  ) {
     return;
   }
 
@@ -237,6 +241,155 @@ server.post("/api/translate", async (req, res) => {
   }
 });
 
+// Optional Audio Transcription Fallback using Gemini
+server.post("/api/transcribe", async (req, res) => {
+  try {
+    const {audioBase64, mimeType, language} = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      return res.status(500).json({error: "GEMINI_API_KEY is not configured on server."});
+    }
+
+    if (!audioBase64 || typeof audioBase64 !== "string") {
+      return res.status(400).json({error: "Missing or invalid 'audioBase64' payload."});
+    }
+
+    const ai = new GoogleGenAI({apiKey});
+    const promptText = `Transcribe the spoken audio accurately into text in the language spoken (${language || "Indian English/Hindi/Marathi"}). Return ONLY the raw transcript with no preamble or quotes.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: [
+        {
+          inlineData: {
+            mimeType: mimeType || "audio/webm",
+            data: audioBase64.replace(/^data:audio\/\w+;base64,/, ""),
+          },
+        },
+        promptText,
+      ],
+    });
+
+    const transcript = response.text ? response.text.trim() : "";
+    return res.json({transcript});
+  } catch (err) {
+    console.error("[TRANSCRIBE ERROR]", err);
+    return res.status(500).json({error: err.message || "Audio transcription failed."});
+  }
+});
+
+// Secure Citizen Identity Uniqueness & Verification Endpoint
+server.post("/api/identity/verify", async (req, res) => {
+  try {
+    const {uid, idNumber, idType, idDocumentUrl} = req.body;
+
+    if (!uid || typeof uid !== "string") {
+      return res.status(400).json({error: "Missing or invalid user ID ('uid')."});
+    }
+    if (!idNumber || typeof idNumber !== "string") {
+      return res.status(400).json({error: "Missing or invalid government identity number."});
+    }
+
+    const normalized = normalizeGovernmentId(idNumber);
+    if (!normalized || normalized.length < 4) {
+      return res.status(400).json({error: "Government identity number must be at least 4 characters."});
+    }
+
+    const identityHash = generateIdentityHash(idNumber);
+
+    // Transaction-safe identity uniqueness check on identityRegistry/{identityHash}
+    const registryRef = db.collection("identityRegistry").doc(identityHash);
+    const userRef = db.collection("users").doc(uid);
+
+    let isDuplicate = false;
+    let registeredUid = null;
+
+    await db.runTransaction(async (transaction) => {
+      const regDoc = await transaction.get(registryRef);
+
+      if (regDoc.exists) {
+        const existingData = regDoc.data();
+        if (existingData.uid && existingData.uid !== uid) {
+          isDuplicate = true;
+          registeredUid = existingData.uid;
+          return;
+        }
+      }
+
+      // Record in registry
+      transaction.set(registryRef, {
+        uid,
+        identityHash,
+        idType: idType || "Citizen Government ID",
+        verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+
+      // Update user document
+      transaction.set(userRef, {
+        identityVerificationStatus: "pending",
+        identityHash,
+        idType: idType || "Citizen Government ID",
+        idDocumentUrl: idDocumentUrl || null,
+        identitySubmittedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+    });
+
+    if (isDuplicate) {
+      return res.status(409).json({
+        error: "This identity is already associated with a CivicPulse account. Please sign in using your existing account.",
+        isDuplicate: true,
+      });
+    }
+
+    return res.json({
+      success: true,
+      status: "pending",
+      message: "Identity verification document submitted successfully. Pending admin review.",
+    });
+  } catch (err) {
+    console.error("[IDENTITY VERIFICATION ERROR]", err);
+    return res.status(500).json({error: err.message || "Failed to process identity verification."});
+  }
+});
+
+// Group matching helper endpoint for frontend / backend deduplication
+server.post("/api/issues/find-group", async (req, res) => {
+  try {
+    const {latitude, longitude, category, maxRadiusMeters} = req.body;
+    const radius = Number(maxRadiusMeters) || DEFAULT_GROUP_RADIUS_METERS;
+
+    if (latitude === undefined || longitude === undefined || !category) {
+      return res.status(400).json({error: "Missing latitude, longitude, or category."});
+    }
+
+    // Query active non-resolved issues from Firestore
+    const snapshot = await db.collection("issues")
+        .where("status", "in", ["Pending", "In Progress", "pending", "in progress"])
+        .get();
+
+    const activeIssues = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
+
+    const match = findMatchingGroup(activeIssues, {
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      category: String(category),
+    }, radius);
+
+    return res.json({
+      matched: Boolean(match),
+      matchedGroup: match || null,
+      radiusMeters: radius,
+    });
+  } catch (err) {
+    console.error("[GROUP FIND ERROR]", err);
+    return res.status(500).json({error: err.message || "Failed to search for duplicate group."});
+  }
+});
+
 // 5. Start Server
 const PORT = process.env.PORT || 8080;
 if (process.env.NODE_ENV !== "test") {
@@ -251,5 +404,8 @@ module.exports = {
   processIssue,
   initFirebaseAdmin,
   translateTextWithGemini,
+  findMatchingGroup,
+  calculateDistanceMeters,
+  generateIdentityHash,
+  normalizeGovernmentId,
 };
-

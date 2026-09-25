@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test gemini.spec.js",
+    "test": "node --test gemini.spec.js advanced.spec.js",
     "lint": "eslint ."
   },
   "engines": {
