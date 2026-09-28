@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from './context/AuthContext.jsx'
 import { subscribeAllIssues } from './firebase/issues.js'
+import ComplaintStatusChart from './ComplaintStatusChart.jsx'
 import {
   subscribeScopedVerificationRequests,
   approveEmployeeHierarchy,
-  rejectVerificationRequest
+  rejectVerificationRequest,
+  createOfficerHierarchyDirectly
 } from './firebase/verification.js'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from './firebase/config.js'
@@ -45,6 +47,17 @@ function SuperAdminDashboard({ onLogout }) {
   const [actionError, setActionError] = useState('')
   // Request filter within tab
   const [requestFilter, setRequestFilter] = useState('pending') // 'pending' | 'approved' | 'rejected' | 'all'
+
+  // Direct State Admin Appointment Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newAdminName, setNewAdminName] = useState('')
+  const [newAdminEmail, setNewAdminEmail] = useState('')
+  const [newAdminPassword, setNewAdminPassword] = useState('')
+  const [newAdminState, setNewAdminState] = useState('Maharashtra')
+  const [newAdminDept, setNewAdminDept] = useState('Department of State Administration')
+  const [newAdminEmpId, setNewAdminEmpId] = useState('')
+  const [newAdminPhone, setNewAdminPhone] = useState('')
+  const [isCreatingOfficer, setIsCreatingOfficer] = useState(false)
 
   useEffect(() => {
     // 1. Subscribe to all issues
@@ -238,6 +251,47 @@ function SuperAdminDashboard({ onLogout }) {
     }
   }
 
+  async function handleCreateStateAdmin(e) {
+    e.preventDefault()
+    setActionError('')
+    setActionSuccess('')
+    if (!newAdminName.trim() || !newAdminEmail.trim() || !newAdminPassword || !newAdminState) {
+      setActionError('Full Name, Official Email, Password, and State are required.')
+      return
+    }
+    if (newAdminPassword.length < 8) {
+      setActionError('Password must be at least 8 characters.')
+      return
+    }
+
+    setIsCreatingOfficer(true)
+    try {
+      await createOfficerHierarchyDirectly({
+        callerUid: currentUser?.uid,
+        email: newAdminEmail.trim(),
+        password: newAdminPassword,
+        name: newAdminName.trim(),
+        role: 'state_admin',
+        state: newAdminState,
+        department: newAdminDept.trim(),
+        employeeId: newAdminEmpId.trim(),
+        mobileNumber: newAdminPhone.trim()
+      })
+      setActionSuccess(`✓ Successfully appointed ${newAdminName.trim()} as State Admin for ${newAdminState}.`)
+      setShowCreateModal(false)
+      setNewAdminName('')
+      setNewAdminEmail('')
+      setNewAdminPassword('')
+      setNewAdminEmpId('')
+      setNewAdminPhone('')
+    } catch (err) {
+      console.error('Failed to appoint State Admin:', err)
+      setActionError(err.message || 'Failed to appoint State Admin.')
+    } finally {
+      setIsCreatingOfficer(false)
+    }
+  }
+
   async function handleLogoutClick() {
     if (onLogout) {
       onLogout()
@@ -342,6 +396,14 @@ function SuperAdminDashboard({ onLogout }) {
           </div>
         ) : activeTab === 'overview' && (
           <>
+            {/* PROBLEM STATUS OVERALL CHART */}
+            <ComplaintStatusChart
+              title="Problem Status — Overall"
+              pending={pendingComplaints}
+              inProgress={inProgressComplaints}
+              resolved={resolvedComplaints}
+            />
+
             {/* TOP 9-METRIC STATS GRID */}
             <section className="superadmin-stats-grid">
               <div className="stat-card">
@@ -468,8 +530,18 @@ function SuperAdminDashboard({ onLogout }) {
                 <span>State Administrator Appointments & Applications</span>
               </h3>
 
-              {/* FILTER SUB-BAR */}
-              <div className="filter-pills-bar">
+              {/* ACTION & FILTER SUB-BAR */}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => setShowCreateModal(true)}
+                  style={{ marginTop: 0, padding: '8px 16px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <span>+ Appoint State Admin</span>
+                </button>
+
+                <div className="filter-pills-bar">
                 <button
                   type="button"
                   className={`filter-pill-btn ${requestFilter === 'pending' ? 'active' : ''}`}
@@ -500,6 +572,7 @@ function SuperAdminDashboard({ onLogout }) {
                 </button>
               </div>
             </div>
+          </div>
 
             {/* 3 COUNTER STAT CARDS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
@@ -749,6 +822,135 @@ function SuperAdminDashboard({ onLogout }) {
                   style={{ background: '#10b981', color: 'white', marginTop: 0, padding: '8px 20px', fontWeight: '700' }}
                 >
                   {processingId === approvingReq.id ? 'Approving...' : 'Confirm & Appoint State Admin'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DIRECT STATE ADMIN APPOINTMENT MODAL */}
+      {showCreateModal && (
+        <div className="gov-modal-backdrop" onClick={() => setShowCreateModal(false)}>
+          <div className="gov-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <button type="button" className="gov-modal-close" onClick={() => setShowCreateModal(false)}>
+              ✕
+            </button>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>
+              🏛️ Appoint New State Administrator
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 16px 0' }}>
+              Directly provisions an active State Admin credential in the national hierarchy.
+            </p>
+
+            <form onSubmit={handleCreateStateAdmin}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Officer Sunita Rao"
+                  value={newAdminName}
+                  onChange={(e) => setNewAdminName(e.target.value)}
+                  required
+                  disabled={isCreatingOfficer}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                  Official Email *
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. sunita.rao@state.gov.in"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  required
+                  disabled={isCreatingOfficer}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                  Password * (min 8 chars)
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter secure initial password"
+                  value={newAdminPassword}
+                  onChange={(e) => setNewAdminPassword(e.target.value)}
+                  required
+                  disabled={isCreatingOfficer}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                  Assigned State *
+                </label>
+                <select
+                  value={newAdminState}
+                  onChange={(e) => setNewAdminState(e.target.value)}
+                  disabled={isCreatingOfficer}
+                  className="form-select"
+                  style={{ width: '100%', padding: '10px 14px' }}
+                >
+                  {allStatesList.map((s) => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    value={newAdminDept}
+                    onChange={(e) => setNewAdminDept(e.target.value)}
+                    disabled={isCreatingOfficer}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Employee ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SA-MH-01"
+                    value={newAdminEmpId}
+                    onChange={(e) => setNewAdminEmpId(e.target.value)}
+                    disabled={isCreatingOfficer}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setShowCreateModal(false)}
+                  disabled={isCreatingOfficer}
+                  style={{ marginTop: 0 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingOfficer}
+                  className="primary-button"
+                  style={{ marginTop: 0, padding: '8px 20px', fontWeight: '700' }}
+                >
+                  {isCreatingOfficer ? 'Appointing...' : 'Appoint State Admin'}
                 </button>
               </div>
             </form>

@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from './context/AuthContext.jsx'
 import { subscribeScopedIssues } from './firebase/issues.js'
+import ComplaintStatusChart from './ComplaintStatusChart.jsx'
 import {
   subscribeScopedVerificationRequests,
   approveEmployeeHierarchy,
-  rejectVerificationRequest
+  rejectVerificationRequest,
+  createOfficerHierarchyDirectly
 } from './firebase/verification.js'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from './firebase/config.js'
@@ -36,6 +38,17 @@ function StateAdminDashboard({ onLogout }) {
   const districtList = useMemo(() => {
     return getDistrictsForState(stateId || stateName)
   }, [stateId, stateName])
+
+  // Direct District Officer Appointment Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newOfficerName, setNewOfficerName] = useState('')
+  const [newOfficerEmail, setNewOfficerEmail] = useState('')
+  const [newOfficerPassword, setNewOfficerPassword] = useState('')
+  const [newOfficerDistrict, setNewOfficerDistrict] = useState(districtList[0]?.name || 'Pune')
+  const [newOfficerDept, setNewOfficerDept] = useState('District Revenue & Operations')
+  const [newOfficerEmpId, setNewOfficerEmpId] = useState('')
+  const [newOfficerPhone, setNewOfficerPhone] = useState('')
+  const [isCreatingOfficer, setIsCreatingOfficer] = useState(false)
 
   useEffect(() => {
     // 1. Subscribe to state issues
@@ -89,12 +102,12 @@ function StateAdminDashboard({ onLogout }) {
   const resolvedComplaints = issues.filter((i) => (i.status || '').toLowerCase() === 'resolved').length
   const resolutionRate = totalComplaints > 0 ? Math.round((resolvedComplaints / totalComplaints) * 100) : 0
 
-  // District Admin Requests
+  // District Officer & Admin Requests
   const districtAdminRequests = useMemo(() => {
     return requests.filter((r) => {
       const role = (r.requestedRole || '').toUpperCase().replace(/[\s-]/g, '_')
       const type = (r.employeeType || '').toUpperCase().replace(/[\s-]/g, '_')
-      return role === 'DISTRICT_ADMIN' || type === 'DISTRICT_ADMIN'
+      return role === 'DISTRICT_ADMIN' || type === 'DISTRICT_ADMIN' || role === 'DISTRICT_OFFICER' || type === 'DISTRICT_OFFICER'
     })
   }, [requests])
 
@@ -135,23 +148,66 @@ function StateAdminDashboard({ onLogout }) {
     setProcessingId(approvingReq.id)
 
     try {
+      const roleToAssign = 'district_officer'
       await approveEmployeeHierarchy({
         requestId: approvingReq.id,
         userId: approvingReq.userId,
-        assignedRole: 'district_admin',
+        assignedRole: roleToAssign,
         state: stateName,
         district: assignedDistrict || districtList[0]?.name || 'Pune',
         taluka: '',
         adminUid: currentUser?.uid
       })
 
-      setActionSuccess(`✓ Approved District Admin: ${approvingReq.name} for ${assignedDistrict}.`)
+      setActionSuccess(`✓ Approved District Officer: ${approvingReq.name} for ${assignedDistrict}.`)
       setApprovingReq(null)
     } catch (err) {
-      console.error('Error approving District Admin:', err)
-      setActionError(err.message || 'Failed to approve District Admin.')
+      console.error('Error approving District Officer:', err)
+      setActionError(err.message || 'Failed to approve District Officer.')
     } finally {
       setProcessingId(null)
+    }
+  }
+
+  async function handleCreateDistrictOfficer(e) {
+    e.preventDefault()
+    setActionError('')
+    setActionSuccess('')
+    if (!newOfficerName.trim() || !newOfficerEmail.trim() || !newOfficerPassword || !newOfficerDistrict) {
+      setActionError('Full Name, Official Email, Password, and District are required.')
+      return
+    }
+    if (newOfficerPassword.length < 8) {
+      setActionError('Password must be at least 8 characters.')
+      return
+    }
+
+    setIsCreatingOfficer(true)
+    try {
+      await createOfficerHierarchyDirectly({
+        callerUid: currentUser?.uid,
+        email: newOfficerEmail.trim(),
+        password: newOfficerPassword,
+        name: newOfficerName.trim(),
+        role: 'district_officer',
+        state: stateName,
+        district: newOfficerDistrict,
+        department: newOfficerDept.trim(),
+        employeeId: newOfficerEmpId.trim(),
+        mobileNumber: newOfficerPhone.trim()
+      })
+      setActionSuccess(`✓ Successfully appointed ${newOfficerName.trim()} as District Officer for ${newOfficerDistrict}.`)
+      setShowCreateModal(false)
+      setNewOfficerName('')
+      setNewOfficerEmail('')
+      setNewOfficerPassword('')
+      setNewOfficerEmpId('')
+      setNewOfficerPhone('')
+    } catch (err) {
+      console.error('Failed to appoint District Officer:', err)
+      setActionError(err.message || 'Failed to appoint District Officer.')
+    } finally {
+      setIsCreatingOfficer(false)
     }
   }
 
@@ -237,7 +293,7 @@ function StateAdminDashboard({ onLogout }) {
             onClick={() => setActiveTab('district_admins')}
             style={{ padding: '10px 18px', fontSize: '13px', fontWeight: '700' }}
           >
-            🏙️ District Admins ({districtAdminRequests.filter((r) => r.status === 'pending').length} Pending)
+            🏙️ District Officers ({districtAdminRequests.filter((r) => r.status === 'pending').length} Pending)
           </button>
 
           <button
@@ -257,6 +313,14 @@ function StateAdminDashboard({ onLogout }) {
           </div>
         ) : activeTab === 'overview' && (
           <>
+            {/* PROBLEM STATUS STATE CHART */}
+            <ComplaintStatusChart
+              title={`Problem Status — ${stateName}`}
+              pending={pendingComplaints}
+              inProgress={inProgressComplaints}
+              resolved={resolvedComplaints}
+            />
+
             <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
               <div className="stat-card" style={{ padding: '16px' }}>
                 <span className="stat-icon">🏙️</span>
@@ -344,9 +408,19 @@ function StateAdminDashboard({ onLogout }) {
         {/* 5. DISTRICT ADMINS TAB */}
         {activeTab === 'district_admins' && (
           <section>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#0f172a' }}>
-              🏙️ District Administrator Applications for {stateName}
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a' }}>
+                🏙️ District Officer Appointments & Applications ({stateName})
+              </h3>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => setShowCreateModal(true)}
+                style={{ marginTop: 0, padding: '8px 16px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <span>+ Appoint District Officer</span>
+              </button>
+            </div>
 
             {districtAdminRequests.length === 0 ? (
               <div className="stat-card" style={{ padding: '30px', textAlign: 'center' }}>
@@ -503,6 +577,135 @@ function StateAdminDashboard({ onLogout }) {
                   style={{ background: '#10b981', color: 'white', marginTop: 0, padding: '8px 20px', fontWeight: '700' }}
                 >
                   {processingId === approvingReq.id ? 'Approving...' : 'Confirm & Appoint District Admin'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DIRECT DISTRICT OFFICER APPOINTMENT MODAL */}
+      {showCreateModal && (
+        <div className="gov-modal-backdrop" onClick={() => setShowCreateModal(false)}>
+          <div className="gov-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <button type="button" className="gov-modal-close" onClick={() => setShowCreateModal(false)}>
+              ✕
+            </button>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>
+              🏙️ Appoint District Officer ({stateName})
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 16px 0' }}>
+              Directly provisions an active District Officer credential in {stateName} state hierarchy.
+            </p>
+
+            <form onSubmit={handleCreateDistrictOfficer}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Officer Rajesh Kulkarni"
+                  value={newOfficerName}
+                  onChange={(e) => setNewOfficerName(e.target.value)}
+                  required
+                  disabled={isCreatingOfficer}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                  Official Email *
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. rajesh.kulkarni@district.gov.in"
+                  value={newOfficerEmail}
+                  onChange={(e) => setNewOfficerEmail(e.target.value)}
+                  required
+                  disabled={isCreatingOfficer}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                  Password * (min 8 chars)
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter secure initial password"
+                  value={newOfficerPassword}
+                  onChange={(e) => setNewOfficerPassword(e.target.value)}
+                  required
+                  disabled={isCreatingOfficer}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                  Assigned District * ({stateName})
+                </label>
+                <select
+                  value={newOfficerDistrict}
+                  onChange={(e) => setNewOfficerDistrict(e.target.value)}
+                  disabled={isCreatingOfficer}
+                  className="form-select"
+                  style={{ width: '100%', padding: '10px 14px' }}
+                >
+                  {districtList.map((d) => (
+                    <option key={d.id} value={d.name}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    value={newOfficerDept}
+                    onChange={(e) => setNewOfficerDept(e.target.value)}
+                    disabled={isCreatingOfficer}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Employee ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. DO-PUN-01"
+                    value={newOfficerEmpId}
+                    onChange={(e) => setNewOfficerEmpId(e.target.value)}
+                    disabled={isCreatingOfficer}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setShowCreateModal(false)}
+                  disabled={isCreatingOfficer}
+                  style={{ marginTop: 0 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingOfficer}
+                  className="primary-button"
+                  style={{ marginTop: 0, padding: '8px 20px', fontWeight: '700' }}
+                >
+                  {isCreatingOfficer ? 'Appointing...' : 'Appoint District Officer'}
                 </button>
               </div>
             </form>

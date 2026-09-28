@@ -3,9 +3,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ================================
+    // ==========================================
     // HELPER FUNCTIONS & HIERARCHICAL RBAC
-    // ================================
+    // Hierarchy: SUPER ADMIN -> STATE ADMIN -> DISTRICT OFFICER -> TALUKA OFFICER -> CITIZEN
+    // ==========================================
 
     function isAuthenticated() {
       return request.auth != null;
@@ -16,142 +17,234 @@ service cloud.firestore {
              request.auth.uid == userId;
     }
 
+    function hasUserData() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function getUserData() {
       return get(
         /databases/$(database)/documents/users/$(request.auth.uid)
       ).data;
     }
 
+    // 1. Super Admin: apex nationwide authority
     function isSuperAdmin() {
-      return isAuthenticated() &&
+      return hasUserData() &&
              (getUserData().role in ['super_admin', 'admin', 'SUPER_ADMIN', 'ADMIN']) &&
-             (getUserData().verified == true || getUserData().accountStatus == 'active');
+             (getUserData().verified == true || getUserData().accountStatus in ['active', 'approved']);
     }
 
+    // 2. State Admin: statewide authority
     function isStateAdmin() {
-      return isAuthenticated() &&
+      return hasUserData() &&
              (getUserData().role in ['state_admin', 'STATE_ADMIN']) &&
-             (getUserData().verified == true || getUserData().accountStatus == 'active');
+             (getUserData().verified == true || getUserData().accountStatus in ['active', 'approved']);
     }
 
-    function isDistrictAdmin() {
-      return isAuthenticated() &&
-             (getUserData().role in ['district_admin', 'DISTRICT_ADMIN']) &&
-             (getUserData().verified == true || getUserData().accountStatus == 'active');
+    // 3. District Officer: districtwide authority
+    function isDistrictOfficer() {
+      return hasUserData() &&
+             (getUserData().role in [
+               'district_officer', 'DISTRICT_OFFICER',
+               'district_admin', 'DISTRICT_ADMIN',
+               'official'
+             ]) &&
+             (getUserData().verified == true || getUserData().accountStatus in ['active', 'approved']);
     }
 
-    function isCitizenAccessEmployee() {
-      return isAuthenticated() &&
-             (getUserData().role in ['citizen_access_employee', 'citizen_access_officer', 'CITIZEN_ACCESS']) &&
-             (getUserData().verified == true || getUserData().accountStatus == 'active');
-    }
-
-    function isIssueResolutionEmployee() {
-      return isAuthenticated() &&
-             (getUserData().role in ['issue_resolution_employee', 'issue_resolution_officer', 'official', 'ISSUE_RESOLUTION']) &&
-             (getUserData().verified == true || getUserData().accountStatus == 'active');
+    // 4. Taluka Officer: taluka civic investigation & resolution
+    function isTalukaOfficer() {
+      return hasUserData() &&
+             (getUserData().role in [
+               'taluka_officer', 'TALUKA_OFFICER',
+               'issue_resolution_employee', 'issue_resolution_officer',
+               'citizen_access_employee', 'citizen_access_officer'
+             ]) &&
+             (getUserData().verified == true || getUserData().accountStatus in ['active', 'approved']);
     }
 
     function isVerifiedOfficial() {
-      return isSuperAdmin() || isStateAdmin() || isDistrictAdmin() || isCitizenAccessEmployee() || isIssueResolutionEmployee();
+      return isSuperAdmin() || isStateAdmin() || isDistrictOfficer() || isTalukaOfficer();
     }
 
-    // ================================
+    // Geographic Scoping Helpers
+    function officialMatchesState(docState, docStateId, docStateName) {
+      return isStateAdmin() && (
+        (getUserData().stateId != null && getUserData().stateId == docStateId) ||
+        (getUserData().state != null && getUserData().state == docState) ||
+        (getUserData().stateName != null && getUserData().stateName == docStateName) ||
+        (getUserData().state != null && getUserData().state == docStateName) ||
+        (getUserData().stateName != null && getUserData().stateName == docState)
+      );
+    }
+
+    function officialMatchesDistrict(docDistrict, docDistrictId, docDistrictName, docState, docStateId) {
+      return isDistrictOfficer() && (
+        (getUserData().districtId != null && getUserData().districtId == docDistrictId) ||
+        (getUserData().district != null && getUserData().district == docDistrict) ||
+        (getUserData().districtName != null && getUserData().districtName == docDistrictName) ||
+        (getUserData().district != null && getUserData().district == docDistrictName) ||
+        (getUserData().districtName != null && getUserData().districtName == docDistrict)
+      ) && (
+        docStateId == null || getUserData().stateId == null || getUserData().stateId == docStateId ||
+        (getUserData().state != null && (getUserData().state == docStateId || getUserData().stateName == docStateId))
+      );
+    }
+
+    function officialMatchesTaluka(docTaluka, docTalukaId, docTalukaName, docDistrictId, docStateId) {
+      return isTalukaOfficer() && (
+        (getUserData().talukaId != null && getUserData().talukaId == docTalukaId) ||
+        (getUserData().taluka != null && getUserData().taluka == docTaluka) ||
+        (getUserData().talukaName != null && getUserData().talukaName == docTalukaName) ||
+        (getUserData().taluka != null && getUserData().taluka == docTalukaName) ||
+        (getUserData().talukaName != null && getUserData().talukaName == docTaluka)
+      ) && (
+        docDistrictId == null || getUserData().districtId == null || getUserData().districtId == docDistrictId ||
+        (getUserData().district != null && (getUserData().district == docDistrictId || getUserData().districtName == docDistrictId))
+      ) && (
+        docStateId == null || getUserData().stateId == null || getUserData().stateId == docStateId ||
+        (getUserData().state != null && (getUserData().state == docStateId || getUserData().stateName == docStateId))
+      );
+    }
+
+    // ==========================================
     // USERS COLLECTION
-    // ================================
+    // ==========================================
 
     match /users/{userId} {
 
-      // User can read own profile; Officials/Admins can read user profiles according to tier.
-      allow read: if isOwner(userId) || isVerifiedOfficial();
+      // User reads own profile first; Officials/Admins read scoped profiles.
+      allow read: if isOwner(userId)
+        || isSuperAdmin()
+        || officialMatchesState(resource.data.state, resource.data.stateId, resource.data.stateName)
+        || officialMatchesDistrict(resource.data.district, resource.data.districtId, resource.data.districtName, resource.data.state, resource.data.stateId)
+        || officialMatchesTaluka(resource.data.taluka, resource.data.talukaId, resource.data.talukaName, resource.data.districtId, resource.data.stateId);
 
-      // New citizen or official applicant registration MUST start unverified.
-      allow create: if isOwner(userId)
+      // Creation hierarchy:
+      // - Citizens create own citizen account (automatically active/verified) or applicant
+      // - Super Admin can create State Admin
+      // - State Admin can create District Officer in their state
+      // - District Officer can create Taluka Officer in their district
+      allow create: if (
+        isOwner(userId)
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.role in ['citizen', 'applicant']
-        && request.resource.data.verified == false;
-
-      // Admins and Citizen Access Employees can update user verification status.
-      // Normal citizens CANNOT self-elevate role or verification status.
-      allow update: if isSuperAdmin()
-        || isStateAdmin()
-        || isDistrictAdmin()
-        || isCitizenAccessEmployee()
+        && (
+          (request.resource.data.role == 'citizen')
+          || (request.resource.data.role == 'applicant' && request.resource.data.verified == false)
+        )
+      ) || isSuperAdmin()
         || (
-          isOwner(userId)
-          && request.resource.data.uid == resource.data.uid
+          isStateAdmin()
+          && request.resource.data.role in ['district_officer', 'district_admin']
           && (
-            (request.resource.data.role == resource.data.role && request.resource.data.verified == resource.data.verified)
-            || (resource.data.role in ['citizen', 'applicant'] && request.resource.data.role in ['citizen', 'applicant'] && request.resource.data.verified == false)
+            request.resource.data.stateId == getUserData().stateId
+            || request.resource.data.state == getUserData().state
+            || request.resource.data.stateName == getUserData().stateName
+          )
+        )
+        || (
+          isDistrictOfficer()
+          && request.resource.data.role in ['taluka_officer', 'issue_resolution_employee']
+          && (
+            request.resource.data.districtId == getUserData().districtId
+            || request.resource.data.district == getUserData().district
+            || request.resource.data.districtName == getUserData().districtName
           )
         );
+
+      // Normal citizens can update their own profile without elevating role.
+      // Super Admins, State Admins, and District Officers can manage scoped records.
+      allow update: if (
+        isOwner(userId)
+        && request.resource.data.uid == request.auth.uid
+        && (
+          request.resource.data.role == 'citizen'
+          || request.resource.data.role == resource.data.role
+        )
+      ) || isSuperAdmin()
+        || officialMatchesState(resource.data.state, resource.data.stateId, resource.data.stateName)
+        || officialMatchesDistrict(resource.data.district, resource.data.districtId, resource.data.districtName, resource.data.state, resource.data.stateId)
+        || officialMatchesTaluka(resource.data.taluka, resource.data.talukaId, resource.data.talukaName, resource.data.districtId, resource.data.stateId);
 
       allow delete: if isSuperAdmin();
     }
 
-    // ================================
+    // ==========================================
     // GOVERNMENT VERIFICATION REQUESTS
-    // ================================
+    // ==========================================
 
     match /verificationRequests/{requestId} {
 
-      // Super Admin sees all; State/District Admins see scoped; applicants see own request.
-      allow read: if isSuperAdmin()
-        || isStateAdmin()
-        || isDistrictAdmin()
-        || (
-          isAuthenticated()
-          && (
-            resource.data.userId == request.auth.uid ||
-            resource.data.applicantUid == request.auth.uid
-          )
-        );
+      // Super Admin sees all; State Admin sees state; District Officer sees district; Applicant sees own
+      allow read: if (
+        isAuthenticated()
+        && (
+          resource.data.userId == request.auth.uid ||
+          resource.data.applicantUid == request.auth.uid
+        )
+      ) || isSuperAdmin()
+        || officialMatchesState(resource.data.state, resource.data.stateId, resource.data.stateName)
+        || officialMatchesDistrict(resource.data.district, resource.data.districtId, resource.data.districtName, resource.data.state, resource.data.stateId);
 
-      // Authenticated users can submit their own verification request.
+      // Authenticated users submit their own verification request
       allow create: if isAuthenticated()
         && (request.resource.data.userId == request.auth.uid || request.resource.data.applicantUid == request.auth.uid)
         && request.resource.data.status == 'pending';
 
-      // Only administrators can approve or reject government employee requests.
-      allow update: if (isSuperAdmin() || isStateAdmin() || isDistrictAdmin())
-        && request.resource.data.status in ['approved', 'rejected'];
+      // Approval hierarchy:
+      // - Super Admin approves State Admin
+      // - State Admin approves District Officer in their state
+      // - District Officer approves Taluka Officer in their district
+      allow update: if (
+        isSuperAdmin()
+        || officialMatchesState(resource.data.state, resource.data.stateId, resource.data.stateName)
+        || officialMatchesDistrict(resource.data.district, resource.data.districtId, resource.data.districtName, resource.data.state, resource.data.stateId)
+      ) && request.resource.data.status in ['approved', 'rejected'];
 
       allow delete: if isSuperAdmin();
     }
 
-    // ================================
+    // ==========================================
     // CITIZEN IDENTITY REGISTRY (PROTECTED)
-    // ================================
+    // Server Admin SDK handles registration & verification
+    // ==========================================
 
     match /identityRegistry/{identityHash} {
       allow read, write: if isSuperAdmin();
     }
 
-    // ================================
-    // CIVIC ISSUES & CLUSTERS
-    // ================================
+    // ==========================================
+    // CIVIC ISSUES & COMPLAINTS
+    // Strictly scoped: Super Admin (all) -> State Admin (state) -> District Officer (district) -> Taluka Officer (taluka) -> Citizen (own)
+    // ==========================================
 
     match /issues/{issueId} {
 
-      // Citizens see their own issues or active issues; officials see all issues.
-      allow read: if isVerifiedOfficial()
-        || (
-          isAuthenticated()
-          && (
-            resource.data.userId == request.auth.uid ||
-            (resource.data.participantUserIds != null && request.auth.uid in resource.data.participantUserIds) ||
-            resource.data.status in ['Pending', 'In Progress', 'pending', 'in progress', 'Resolved', 'resolved']
-          )
-        );
+      // Citizens see only their own complaints.
+      // Officials see complaints strictly inside their administrative scope.
+      allow read: if (
+        isAuthenticated()
+        && (
+          resource.data.userId == request.auth.uid ||
+          (resource.data.participantUserIds != null && request.auth.uid in resource.data.participantUserIds)
+        )
+      ) || isSuperAdmin()
+        || officialMatchesState(resource.data.state, resource.data.stateId, resource.data.stateName)
+        || officialMatchesDistrict(resource.data.district, resource.data.districtId, resource.data.districtName, resource.data.state, resource.data.stateId)
+        || officialMatchesTaluka(resource.data.taluka, resource.data.talukaId, resource.data.talukaName, resource.data.districtId, resource.data.stateId);
 
-      // Logged-in citizens can create their own issues with Pending status.
+      // Citizens submit their own complaint with Pending status
       allow create: if isAuthenticated()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status in ['Pending', 'pending'];
 
-      // Officials and Admins can update issues (status, priority, resolution notes).
-      // Citizens can update their own issue or join an existing cluster (increment reportCount / add participant).
-      allow update: if isVerifiedOfficial()
+      // Status updates: Super Admin, State Admin, District Officer, Taluka Officer (in scope).
+      // Citizens can only join an existing cluster or edit their own pending complaint.
+      allow update: if isSuperAdmin()
+        || officialMatchesState(resource.data.state, resource.data.stateId, resource.data.stateName)
+        || officialMatchesDistrict(resource.data.district, resource.data.districtId, resource.data.districtName, resource.data.state, resource.data.stateId)
+        || officialMatchesTaluka(resource.data.taluka, resource.data.talukaId, resource.data.talukaName, resource.data.districtId, resource.data.stateId)
         || (
           isAuthenticated()
           && (
@@ -170,10 +263,13 @@ service cloud.firestore {
           && resource.data.userId == request.auth.uid
         );
 
-      // Subcollection for individual citizen reports grouped under cluster (private to reporter & officials)
+      // Subcollection for individual citizen reports grouped under cluster
       match /reports/{reportId} {
-        allow read: if isVerifiedOfficial()
-          || (isAuthenticated() && resource.data.userId == request.auth.uid);
+        allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid)
+          || isSuperAdmin()
+          || officialMatchesState(get(/databases/$(database)/documents/issues/$(issueId)).data.state, get(/databases/$(database)/documents/issues/$(issueId)).data.stateId, get(/databases/$(database)/documents/issues/$(issueId)).data.stateName)
+          || officialMatchesDistrict(get(/databases/$(database)/documents/issues/$(issueId)).data.district, get(/databases/$(database)/documents/issues/$(issueId)).data.districtId, get(/databases/$(database)/documents/issues/$(issueId)).data.districtName, get(/databases/$(database)/documents/issues/$(issueId)).data.state, get(/databases/$(database)/documents/issues/$(issueId)).data.stateId)
+          || officialMatchesTaluka(get(/databases/$(database)/documents/issues/$(issueId)).data.taluka, get(/databases/$(database)/documents/issues/$(issueId)).data.talukaId, get(/databases/$(database)/documents/issues/$(issueId)).data.talukaName, get(/databases/$(database)/documents/issues/$(issueId)).data.districtId, get(/databases/$(database)/documents/issues/$(issueId)).data.stateId);
 
         allow create: if isAuthenticated()
           && request.resource.data.userId == request.auth.uid;
@@ -182,17 +278,17 @@ service cloud.firestore {
       }
     }
 
-    // ================================
+    // ==========================================
     // USER ISSUE REFERENCES (CITIZEN INDEX)
-    // ================================
+    // ==========================================
 
     match /userIssueReferences/{userId}/issues/{clusterId} {
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    // ================================
+    // ==========================================
     // DENY EVERYTHING ELSE
-    // ================================
+    // ==========================================
 
     match /{document=**} {
       allow read, write: if false;

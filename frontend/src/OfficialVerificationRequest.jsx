@@ -19,10 +19,10 @@ function OfficialVerificationRequest({ initialEmail = '', initialName = '', onBa
   const [department, setDepartment] = useState('')
   const [designation, setDesignation] = useState('')
   const [employeeId, setEmployeeId] = useState('')
-  const [employeeType, setEmployeeType] = useState('state_admin') // 'citizen_access_employee' | 'issue_resolution_employee' | 'district_admin' | 'state_admin'
+  const [employeeType, setEmployeeType] = useState('district_officer') // 'state_admin' | 'district_officer' | 'taluka_officer'
 
   const isStateAdmin = employeeType === 'state_admin' || employeeType === 'STATE_ADMIN'
-  const isDistrictAdmin = employeeType === 'district_admin' || employeeType === 'DISTRICT_ADMIN'
+  const isDistrictOfficer = employeeType === 'district_officer' || employeeType === 'DISTRICT_OFFICER' || employeeType === 'district_admin' || employeeType === 'DISTRICT_ADMIN'
 
   const allStates = getAllStates()
   const [state, setState] = useState(allStates[0]?.name || 'Maharashtra')
@@ -125,7 +125,7 @@ function OfficialVerificationRequest({ initialEmail = '', initialName = '', onBa
     console.log('Employee type:', employeeType)
     console.log('State:', state)
     console.log('District:', isStateAdmin ? 'N/A (Statewide)' : district)
-    console.log('Taluka:', (isStateAdmin || isDistrictAdmin) ? 'N/A' : taluka)
+    console.log('Taluka:', (isStateAdmin || isDistrictOfficer) ? 'N/A' : taluka)
 
     console.log('[VERIFY] SUBMIT CLICKED')
     console.log('[VERIFY] currentUser:', currentUser?.uid || auth.currentUser?.uid)
@@ -166,7 +166,7 @@ function OfficialVerificationRequest({ initialEmail = '', initialName = '', onBa
         employeeId: employeeId.trim(),
         state,
         district: isStateAdmin ? '' : district,
-        taluka: (isStateAdmin || isDistrictAdmin) ? '' : taluka,
+        taluka: (isStateAdmin || isDistrictOfficer) ? '' : taluka,
         employeeType,
         requestedRole: employeeType,
         reason: reason.trim(),
@@ -328,10 +328,9 @@ function OfficialVerificationRequest({ initialEmail = '', initialName = '', onBa
               className="form-select"
               style={{ width: '100%', padding: '10px 14px' }}
             >
-              <option value="state_admin">State Administrator (State Management)</option>
-              <option value="district_admin">District Administrator (District Management)</option>
-              <option value="citizen_access_employee">Taluka Citizen Access Employee (Citizen Verifications)</option>
-              <option value="issue_resolution_employee">Taluka Issue Resolution Employee (Field Operations)</option>
+              <option value="state_admin">State Administrator (State-wide Management)</option>
+              <option value="district_officer">District Officer (District Operations & Complaint Oversight)</option>
+              <option value="taluka_officer">Taluka Officer (Taluka Field Operations & Resolution)</option>
             </select>
           </div>
 
@@ -380,7 +379,7 @@ function OfficialVerificationRequest({ initialEmail = '', initialName = '', onBa
               </div>
             )}
 
-            {!isStateAdmin && !isDistrictAdmin && (
+            {!isStateAdmin && !isDistrictOfficer && (
               <div className="location-field">
                 <label>Taluka / Ward *</label>
                 <select
@@ -405,7 +404,7 @@ function OfficialVerificationRequest({ initialEmail = '', initialName = '', onBa
               </div>
             )}
 
-            {isDistrictAdmin && (
+            {isDistrictOfficer && (
               <div className="location-field" style={{ display: 'flex', alignItems: 'flex-end' }}>
                 <div style={{ padding: '10px 14px', background: '#f1f5f9', borderRadius: '8px', fontSize: '13px', color: '#475569', width: '100%', border: '1px solid #cbd5e1' }}>
                   🏙️ <strong>Jurisdiction:</strong> District-wide (All Talukas in {district})

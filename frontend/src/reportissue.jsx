@@ -21,15 +21,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
   const t = getTranslation(activeLanguage)
   const langMeta = getLanguageMetadata(activeLanguage)
 
-  const isCitizenVerified =
-    userProfile?.identityVerificationStatus === 'verified' ||
-    userProfile?.verified === true ||
-    userProfile?.role === 'issue_resolution_employee' ||
-    userProfile?.role === 'citizen_access_employee' ||
-    userProfile?.role === 'district_admin' ||
-    userProfile?.role === 'state_admin' ||
-    userProfile?.role === 'super_admin' ||
-    userProfile?.role === 'admin'
+  const isCitizenVerified = true
 
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
@@ -257,11 +249,6 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
     e.preventDefault()
     setError('')
 
-    if (!isCitizenVerified) {
-      setError('Your account is pending verification by the Citizen Access Employee of your taluka. You will be able to submit complaints once verified.')
-      return
-    }
-
     if (!title.trim() || !category || !description.trim()) {
       setError(t.allFieldsRequired || 'Please fill in all required fields.')
       return
@@ -320,18 +307,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
           />
         </div>
 
-        {/* Verification Status Warning if not verified */}
-        {!isCitizenVerified && (
-          <div style={{ margin: '0 0 20px 0', padding: '14px 18px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', color: '#854d0e', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '22px' }}>⏳</span>
-            <div>
-              <strong style={{ display: 'block', fontSize: '14px' }}>Citizen Verification Required</strong>
-              <span style={{ fontSize: '13px' }}>
-                Your account is currently under review by the Citizen Access Employee of {talukaVal} Taluka. Issue submission will be unlocked upon approval.
-              </span>
-            </div>
-          </div>
-        )}
+
 
         <div className="report-card">
           <h1 className="report-page-title">{t.reportPageTitle || 'Report a Civic Issue'}</h1>
@@ -355,7 +331,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
-                  disabled={isSubmitting || !isCitizenVerified}
+                  disabled={isSubmitting}
                   className="form-input"
                 />
               </div>
@@ -368,7 +344,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   required
-                  disabled={isSubmitting || !isCitizenVerified}
+                  disabled={isSubmitting}
                   className="form-select"
                 >
                   <option value="">{t.selectCategory || 'Select Category'}</option>
@@ -399,7 +375,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                   <button
                     type="button"
                     onClick={handleToggleVoiceInput}
-                    disabled={isSubmitting || !isCitizenVerified}
+                    disabled={isSubmitting}
                     className={`btn-voice-mic ${micState === 'listening' ? 'is-recording' : ''}`}
                     aria-label={micState === 'listening' ? 'Stop recording voice complaint' : 'Start speaking voice complaint'}
                   >
@@ -453,7 +429,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                 onChange={(e) => setDescription(e.target.value)}
                 rows="4"
                 required
-                disabled={isSubmitting || !isCitizenVerified}
+                disabled={isSubmitting}
                 className="form-textarea"
               />
             </div>
@@ -472,7 +448,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                     const talukas = getTalukasForDistrict(e.target.value, firstDist)
                     setTalukaVal(talukas[0]?.name || 'Haveli')
                   }}
-                  disabled={isSubmitting || !isCitizenVerified}
+                  disabled={isSubmitting}
                   className="form-select"
                 >
                   {allStates.map((s) => (
@@ -490,7 +466,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                     const talukas = getTalukasForDistrict(stateVal, e.target.value)
                     setTalukaVal(talukas[0]?.name || 'Haveli')
                   }}
-                  disabled={isSubmitting || !isCitizenVerified}
+                  disabled={isSubmitting}
                   className="form-select"
                 >
                   {districtList.map((d) => (
@@ -504,7 +480,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                 <select
                   value={talukaVal}
                   onChange={(e) => setTalukaVal(e.target.value)}
-                  disabled={isSubmitting || !isCitizenVerified}
+                  disabled={isSubmitting}
                   className="form-select"
                 >
                   {talukaList.map((t) => (
@@ -520,7 +496,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                   placeholder={t.enterLocalArea || 'Neighborhood / Ward'}
                   value={localArea}
                   onChange={(e) => setLocalArea(e.target.value)}
-                  disabled={isSubmitting || !isCitizenVerified}
+                  disabled={isSubmitting}
                   className="form-input"
                 />
               </div>
@@ -534,7 +510,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                 placeholder={t.addressPlaceholder || 'e.g. Near City Hospital Gate 2, Main Street'}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                disabled={isSubmitting || !isCitizenVerified}
+                disabled={isSubmitting}
                 className="form-input"
               />
             </div>
@@ -553,7 +529,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                   type="button"
                   className="gps-btn"
                   onClick={handleGetLocation}
-                  disabled={geoLoading || isSubmitting || !isCitizenVerified}
+                  disabled={geoLoading || isSubmitting}
                 >
                   {geoLoading ? `📍 ${t.locating || 'Locating...'}` : `📍 ${t.useMyLocation || 'Use My Location'}`}
                 </button>
@@ -579,7 +555,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
                 type="file"
                 accept="image/*,application/pdf"
                 onChange={handleImageChange}
-                disabled={isSubmitting || !isCitizenVerified}
+                disabled={isSubmitting}
                 className="form-file-input"
               />
 
@@ -607,7 +583,7 @@ function ReportIssue({ onBack, onIssueSubmitted }) {
               <button
                 type="submit"
                 className="submit-issue-btn"
-                disabled={isSubmitting || !isCitizenVerified}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? (t.submittingIssue || 'Uploading / Submitting Issue...') : (t.submitIssueBtn || 'Submit Issue')}
               </button>

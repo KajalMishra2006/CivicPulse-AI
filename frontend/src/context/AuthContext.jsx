@@ -151,6 +151,15 @@ export function AuthProvider({ children }) {
     return sendUserPasswordResetEmail(email)
   }
 
+  const refreshProfile = async () => {
+    if (currentUser?.uid) {
+      const profile = await getUserProfile(currentUser.uid)
+      setUserProfile(profile)
+      return profile
+    }
+    return null
+  }
+
   const value = {
     currentUser,
     userProfile,
@@ -162,7 +171,8 @@ export function AuthProvider({ children }) {
     login,
     googleLogin,
     logout,
-    sendPasswordReset
+    sendPasswordReset,
+    refreshProfile
   }
 
   return (

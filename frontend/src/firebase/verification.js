@@ -182,35 +182,27 @@ export async function registerOfficialApplicant({
     requestedRole === 'state_admin' ||
     requestedRole === 'STATE_ADMIN'
 
-  const isDistrictAdmin =
+  const isDistrictOfficer =
+    employeeType === 'district_officer' ||
+    employeeType === 'DISTRICT_OFFICER' ||
     employeeType === 'district_admin' ||
     employeeType === 'DISTRICT_ADMIN' ||
+    requestedRole === 'district_officer' ||
+    requestedRole === 'DISTRICT_OFFICER' ||
     requestedRole === 'district_admin' ||
     requestedRole === 'DISTRICT_ADMIN'
 
-  const isCitizenAccess =
-    employeeType === 'citizen_access' ||
-    employeeType === 'citizen_access_employee' ||
-    employeeType === 'CITIZEN_ACCESS' ||
-    employeeType === 'CITIZEN_ACCESS_EMPLOYEE' ||
-    requestedRole === 'citizen_access_employee' ||
-    requestedRole === 'CITIZEN_ACCESS'
-
   const canonicalRequestedRole = isStateAdmin
     ? 'state_admin'
-    : isDistrictAdmin
-    ? 'district_admin'
-    : isCitizenAccess
-    ? 'citizen_access_employee'
-    : 'issue_resolution_employee'
+    : isDistrictOfficer
+    ? 'district_officer'
+    : 'taluka_officer'
 
   const canonicalEmployeeType = isStateAdmin
     ? 'state_admin'
-    : isDistrictAdmin
-    ? 'district_admin'
-    : isCitizenAccess
-    ? 'citizen_access_employee'
-    : 'issue_resolution_employee'
+    : isDistrictOfficer
+    ? 'district_officer'
+    : 'taluka_officer'
 
   // 3. Create verification request in verificationRequests collection FIRST
   const selectedStateId = geo.stateId || (state || '').toLowerCase().replace(/\s+/g, '-')
@@ -236,9 +228,9 @@ export async function registerOfficialApplicant({
     districtId: isStateAdmin ? null : geo.districtId,
     districtName: isStateAdmin ? null : geo.districtName,
     district: isStateAdmin ? null : geo.districtName,
-    talukaId: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaId,
-    talukaName: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaName,
-    taluka: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaName,
+    talukaId: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaId,
+    talukaName: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaName,
+    taluka: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaName,
     reason: (reason || '').trim(),
     idDocumentUrl: idDocumentUrl || null,
     governmentIdDocumentUrl: idDocumentUrl || null,
@@ -294,9 +286,9 @@ export async function registerOfficialApplicant({
       districtId: isStateAdmin ? null : geo.districtId,
       districtName: isStateAdmin ? null : geo.districtName,
       district: isStateAdmin ? null : geo.districtName,
-      talukaId: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaId,
-      talukaName: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaName,
-      taluka: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaName,
+      talukaId: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaId,
+      talukaName: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaName,
+      taluka: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaName,
       governmentIdDocumentUrl: idDocumentUrl || null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -353,35 +345,27 @@ export async function submitVerificationRequest({
     requestedRole === 'state_admin' ||
     requestedRole === 'STATE_ADMIN'
 
-  const isDistrictAdmin =
+  const isDistrictOfficer =
+    employeeType === 'district_officer' ||
+    employeeType === 'DISTRICT_OFFICER' ||
     employeeType === 'district_admin' ||
     employeeType === 'DISTRICT_ADMIN' ||
+    requestedRole === 'district_officer' ||
+    requestedRole === 'DISTRICT_OFFICER' ||
     requestedRole === 'district_admin' ||
     requestedRole === 'DISTRICT_ADMIN'
 
-  const isCitizenAccess =
-    employeeType === 'citizen_access' ||
-    employeeType === 'citizen_access_employee' ||
-    employeeType === 'CITIZEN_ACCESS' ||
-    employeeType === 'CITIZEN_ACCESS_EMPLOYEE' ||
-    requestedRole === 'citizen_access_employee' ||
-    requestedRole === 'CITIZEN_ACCESS'
-
   const canonicalRequestedRole = isStateAdmin
     ? 'state_admin'
-    : isDistrictAdmin
-    ? 'district_admin'
-    : isCitizenAccess
-    ? 'citizen_access_employee'
-    : 'issue_resolution_employee'
+    : isDistrictOfficer
+    ? 'district_officer'
+    : 'taluka_officer'
 
   const canonicalEmployeeType = isStateAdmin
     ? 'state_admin'
-    : isDistrictAdmin
-    ? 'district_admin'
-    : isCitizenAccess
-    ? 'citizen_access_employee'
-    : 'issue_resolution_employee'
+    : isDistrictOfficer
+    ? 'district_officer'
+    : 'taluka_officer'
 
   const geo = resolveLocationMetadata({ state, district, taluka })
   const selectedStateId = geo.stateId || (state || '').toLowerCase().replace(/\s+/g, '-')
@@ -407,9 +391,9 @@ export async function submitVerificationRequest({
     districtId: isStateAdmin ? null : geo.districtId,
     districtName: isStateAdmin ? null : geo.districtName,
     district: isStateAdmin ? null : geo.districtName,
-    talukaId: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaId,
-    talukaName: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaName,
-    taluka: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaName,
+    talukaId: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaId,
+    talukaName: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaName,
+    taluka: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaName,
     reason: (reason || '').trim(),
     idDocumentUrl: idDocumentUrl || null,
     idDocumentUploadedAt: idDocumentUrl ? serverTimestamp() : null,
@@ -516,7 +500,7 @@ export function subscribeScopedVerificationRequests({ role, stateId, districtId 
           const targetStateId = (stateId || '').toLowerCase()
           return reqStateId === targetStateId || !targetStateId
         })
-      } else if (normalizedRole === 'district_admin') {
+      } else if (normalizedRole === 'district_officer' || normalizedRole === 'district_admin') {
         requests = requests.filter((r) => {
           const reqStateId = (r.stateId || r.state || r.stateName || '').toLowerCase()
           const targetStateId = (stateId || '').toLowerCase()
@@ -526,6 +510,8 @@ export function subscribeScopedVerificationRequests({ role, stateId, districtId 
           const distMatch = reqDistId === targetDistId || !targetDistId
           return stateMatch && distMatch
         })
+      } else if (normalizedRole === 'taluka_officer' || normalizedRole === 'citizen') {
+        requests = []
       }
 
       requests.sort((a, b) => {
@@ -655,24 +641,19 @@ export async function approveEmployeeHierarchy({
 
   const rawRole = (assignedRole || '').toUpperCase().replace(/[\s-]/g, '_')
   const isStateAdmin = rawRole === 'STATE_ADMIN' || assignedRole === 'state_admin'
-  const isDistrictAdmin = rawRole === 'DISTRICT_ADMIN' || assignedRole === 'district_admin'
-  const isCitizenAccess = rawRole === 'CITIZEN_ACCESS' || rawRole === 'CITIZEN_ACCESS_EMPLOYEE' || assignedRole === 'citizen_access_employee'
+  const isDistrictOfficer = rawRole === 'DISTRICT_OFFICER' || rawRole === 'DISTRICT_ADMIN' || assignedRole === 'district_officer' || assignedRole === 'district_admin'
 
   const canonicalUserRole = isStateAdmin
     ? 'state_admin'
-    : isDistrictAdmin
-    ? 'district_admin'
-    : isCitizenAccess
-    ? 'citizen_access_employee'
-    : 'issue_resolution_employee'
+    : isDistrictOfficer
+    ? 'district_officer'
+    : 'taluka_officer'
 
   const canonicalAssignedRole = isStateAdmin
     ? 'STATE_ADMIN'
-    : isDistrictAdmin
-    ? 'DISTRICT_ADMIN'
-    : isCitizenAccess
-    ? 'CITIZEN_ACCESS'
-    : 'ISSUE_RESOLUTION'
+    : isDistrictOfficer
+    ? 'DISTRICT_OFFICER'
+    : 'TALUKA_OFFICER'
 
   try {
     const batch = writeBatch(db)
@@ -688,20 +669,20 @@ export async function approveEmployeeHierarchy({
       districtId: isStateAdmin ? null : geo.districtId,
       districtName: isStateAdmin ? null : geo.districtName,
       district: isStateAdmin ? null : geo.districtName,
-      talukaId: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaId,
-      talukaName: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaName,
-      taluka: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaName,
+      talukaId: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaId,
+      talukaName: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaName,
+      taluka: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaName,
       reviewedAt: serverTimestamp(),
       reviewedBy: reviewerUid,
       approvedBy: reviewerUid,
       approvedAt: serverTimestamp()
     }, { merge: true })
 
-    // 2. Update user profile document
+    // 2. Update user profile document with active status & verification
     const userRef = doc(db, 'users', userId)
     batch.set(userRef, {
       role: canonicalUserRole,
-      accountStatus: 'approved',
+      accountStatus: 'active',
       verified: true,
       stateId: geo.stateId,
       stateName: geo.stateName,
@@ -709,16 +690,16 @@ export async function approveEmployeeHierarchy({
       districtId: isStateAdmin ? null : geo.districtId,
       districtName: isStateAdmin ? null : geo.districtName,
       district: isStateAdmin ? null : geo.districtName,
-      talukaId: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaId,
-      talukaName: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaName,
-      taluka: (isStateAdmin || isDistrictAdmin) ? null : geo.talukaName,
+      talukaId: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaId,
+      talukaName: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaName,
+      taluka: (isStateAdmin || isDistrictOfficer) ? null : geo.talukaName,
       approvedBy: reviewerUid,
       approvedAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     }, { merge: true })
 
     await batch.commit()
-    console.log('[SUPER ADMIN] Approved application successfully:', { requestId, userId, canonicalUserRole })
+    console.log('[HIERARCHY APPROVAL] Approved application successfully:', { requestId, userId, canonicalUserRole })
   } catch (err) {
     logAuthError('approveEmployeeHierarchy (batch.commit)', err)
     throw err
@@ -775,4 +756,62 @@ export async function rejectCitizenIdentity(citizenUid, officerUid, reason = '')
     identityReviewedAt: serverTimestamp(),
     identityReviewedBy: officerUid || auth.currentUser?.uid || ''
   })
+}
+
+/**
+ * Creates an officer directly within the hierarchical authority structure.
+ * Calls backend /api/officers/create.
+ */
+export async function createOfficerHierarchyDirectly({
+  callerUid,
+  email,
+  password,
+  name,
+  role,
+  state,
+  district = '',
+  taluka = '',
+  department = '',
+  designation = '',
+  employeeId = '',
+  mobileNumber = ''
+}) {
+  const geo = resolveLocationMetadata({ state, district, taluka })
+  const selectedStateId = geo.stateId || (state || '').toLowerCase().replace(/[\s_-]/g, '')
+  const selectedStateName = geo.stateName || state || ''
+  const selectedDistrictId = role === 'state_admin' ? null : (geo.districtId || (district || '').toLowerCase().replace(/[\s_-]/g, ''))
+  const selectedDistrictName = role === 'state_admin' ? null : (geo.districtName || district || '')
+  const selectedTalukaId = role === 'taluka_officer' ? (geo.talukaId || (taluka || '').toLowerCase().replace(/[\s_-]/g, '')) : null
+  const selectedTalukaName = role === 'taluka_officer' ? (geo.talukaName || taluka || '') : null
+
+  const response = await fetch('http://localhost:8080/api/officers/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      callerUid: callerUid || auth.currentUser?.uid,
+      email: email.trim().toLowerCase(),
+      password,
+      name: name.trim(),
+      role,
+      stateId: selectedStateId,
+      stateName: selectedStateName,
+      state: selectedStateName,
+      districtId: selectedDistrictId,
+      districtName: selectedDistrictName,
+      district: selectedDistrictName,
+      talukaId: selectedTalukaId,
+      talukaName: selectedTalukaName,
+      taluka: selectedTalukaName,
+      department: department.trim(),
+      designation: designation.trim(),
+      employeeId: employeeId.trim(),
+      mobileNumber: mobileNumber.trim()
+    })
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to create officer.')
+  }
+  return data
 }

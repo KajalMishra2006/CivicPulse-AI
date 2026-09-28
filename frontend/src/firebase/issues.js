@@ -267,20 +267,7 @@ export async function createIssue({
     throw new Error('You must be logged in to report an issue.')
   }
 
-  // Enforce Citizen Verification Check: citizen cannot submit complaints until verified
-  const isCitizenVerified =
-    userProfile?.identityVerificationStatus === 'verified' ||
-    userProfile?.verified === true ||
-    userProfile?.role === 'issue_resolution_employee' ||
-    userProfile?.role === 'citizen_access_employee' ||
-    userProfile?.role === 'district_admin' ||
-    userProfile?.role === 'state_admin' ||
-    userProfile?.role === 'super_admin' ||
-    userProfile?.role === 'admin'
 
-  if (!isCitizenVerified) {
-    throw new Error('Your account is pending verification by the Citizen Access Employee of your taluka. You will be able to submit complaints once verified.')
-  }
 
   let imageUrl = null
   if (imageFile) {
@@ -624,14 +611,103 @@ export function calculateIssueStats(issues = []) {
  * Subscribe to issues scoped by Geographic Hierarchy:
  * - Super Admin: all
  * - State Admin: stateId
- * - District Admin: stateId + districtId
- * - Issue Resolution Employee: stateId + districtId + talukaId
+ * - District Officer: stateId + districtId
+ * - Taluka Officer: stateId + districtId + talukaId
+ * - Citizen: only own issues
  */
-export function subscribeScopedIssues({ role, stateId, districtId, talukaId }, onUpdate, onError) {
-  const issuesCollection = collection(db, 'issues')
+export function subscribeScopedIssues({ role, stateId, districtId, talukaId, userId }, onUpdate, onError) {
+  const normRole = (role || '').toLowerCase().trim()
+  const cleanStateId = (stateId || '').trim().toLowerCase()
+  const cleanDistrictId = (districtId || '').trim().toLowerCase()
+  const cleanTalukaId = (talukaId || '').trim().toLowerCase()
+
+  let issuesQuery
+
+  if (normRole === 'super_admin' || normRole === 'admin') {
+    // 1. Super Admin: Apex national oversight (all complaints)
+    issuesQuery = collection(db, 'issues')
+  } else if (normRole === 'state_admin') {
+    // 2. State Admin: Statewide oversight (stateId)
+    if (cleanStateId) {
+      issuesQuery = query(
+        collection(db, 'issues'),
+        where('stateId', '==', cleanStateId)
+      )
+    } else {
+      issuesQuery = collection(db, 'issues')
+    }
+  } else if (
+    normRole === 'district_officer' ||
+    normRole === 'district_admin' ||
+    normRole === 'district_administrator'
+  ) {
+    // 3. District Officer: Districtwide oversight (stateId + districtId)
+    if (cleanStateId && cleanDistrictId) {
+      issuesQuery = query(
+        collection(db, 'issues'),
+        where('stateId', '==', cleanStateId),
+        where('districtId', '==', cleanDistrictId)
+      )
+    } else if (cleanDistrictId) {
+      issuesQuery = query(
+        collection(db, 'issues'),
+        where('districtId', '==', cleanDistrictId)
+      )
+    } else if (cleanStateId) {
+      issuesQuery = query(
+        collection(db, 'issues'),
+        where('stateId', '==', cleanStateId)
+      )
+    } else {
+      issuesQuery = collection(db, 'issues')
+    }
+  } else if (
+    normRole === 'taluka_officer' ||
+    normRole === 'issue_resolution_employee' ||
+    normRole === 'issue_resolution_officer' ||
+    normRole === 'citizen_access_employee' ||
+    normRole === 'citizen_access_officer' ||
+    normRole === 'official'
+  ) {
+    // 4. Taluka Officer: Taluka Field Operations & Resolution (stateId + districtId + talukaId)
+    if (cleanStateId && cleanDistrictId && cleanTalukaId) {
+      issuesQuery = query(
+        collection(db, 'issues'),
+        where('stateId', '==', cleanStateId),
+        where('districtId', '==', cleanDistrictId),
+        where('talukaId', '==', cleanTalukaId)
+      )
+    } else if (cleanTalukaId) {
+      issuesQuery = query(
+        collection(db, 'issues'),
+        where('talukaId', '==', cleanTalukaId)
+      )
+    } else if (cleanStateId && cleanDistrictId) {
+      issuesQuery = query(
+        collection(db, 'issues'),
+        where('stateId', '==', cleanStateId),
+        where('districtId', '==', cleanDistrictId)
+      )
+    } else {
+      issuesQuery = collection(db, 'issues')
+    }
+  } else if (normRole === 'citizen') {
+    // 5. Citizen: Only own issues
+    const effectiveUid = userId || auth.currentUser?.uid
+    if (effectiveUid) {
+      issuesQuery = query(
+        collection(db, 'issues'),
+        where('userId', '==', effectiveUid)
+      )
+    } else {
+      issuesQuery = collection(db, 'issues')
+    }
+  } else {
+    issuesQuery = collection(db, 'issues')
+  }
 
   const unsubscribe = onSnapshot(
-    issuesCollection,
+    issuesQuery,
     (snapshot) => {
       let issues = snapshot.docs.map((docSnap) => {
         const data = docSnap.data()
@@ -643,22 +719,6 @@ export function subscribeScopedIssues({ role, stateId, districtId, talukaId }, o
           ...data
         }
       })
-
-      // Geographic scoping
-      if (role === 'state_admin') {
-        issues = issues.filter((i) => !stateId || i.stateId === stateId || i.state === stateId)
-      } else if (role === 'district_admin') {
-        issues = issues.filter(
-          (i) => (!stateId || i.stateId === stateId || i.state === stateId) &&
-                 (!districtId || i.districtId === districtId || i.district === districtId)
-        )
-      } else if (role === 'issue_resolution_employee') {
-        issues = issues.filter(
-          (i) => (!stateId || i.stateId === stateId || i.state === stateId) &&
-                 (!districtId || i.districtId === districtId || i.district === districtId) &&
-                 (!talukaId || i.talukaId === talukaId || i.taluka === talukaId)
-        )
-      }
 
       const sortedIssues = sortIssuesByPriority(issues)
       onUpdate(sortedIssues)

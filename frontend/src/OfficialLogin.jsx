@@ -62,7 +62,7 @@ function OfficialLogin({ onBackToCitizenLogin, onGoToVerificationRequest }) {
             Government Official Sign In
           </h1>
           <p className="signup-description" style={{ margin: 0, fontSize: '14px', color: '#64748b', lineHeight: 1.5 }}>
-            Unified portal for Super Admins, State Admins, District Admins, Citizen Access Staff, and Issue Resolution Officers.
+            Unified portal for Super Admins, State Admins, and District Officers.
           </p>
         </div>
 

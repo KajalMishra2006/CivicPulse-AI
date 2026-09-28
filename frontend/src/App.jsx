@@ -4,6 +4,7 @@ import SuperAdminDashboard from './SuperAdminDashboard.jsx'
 import StateAdminDashboard from './StateAdminDashboard.jsx'
 import DistrictAdminDashboard from './DistrictAdminDashboard.jsx'
 import CitizenAccessOfficerDashboard from './CitizenAccessOfficerDashboard.jsx'
+import DistrictOfficerDashboard from './DistrictOfficerDashboard.jsx'
 import Login from './login.jsx'
 import OfficialLogin from './OfficialLogin.jsx'
 import OfficialVerificationRequest from './OfficialVerificationRequest.jsx'
@@ -11,7 +12,7 @@ import LanguageOnboardingModal from './LanguageOnboardingModal.jsx'
 import LanguageSelector from './LanguageSelector.jsx'
 import { useState, useMemo } from 'react'
 import { useAuth } from './context/AuthContext.jsx'
-import { formatAuthError } from './firebase/auth.js'
+import { formatAuthError, createMissingCitizenProfile } from './firebase/auth.js'
 import { getTranslation } from './utils/translations.js'
 import {
   getBricsCountries,
@@ -23,8 +24,248 @@ import {
 import { IconShield, IconBuilding } from './Icons.jsx'
 import './App.css'
 
+function ProfileCompletionCard({ currentUser, onProfileCompleted, onLogout, t }) {
+  const [name, setName] = useState(currentUser?.displayName || '')
+  const [mobileNumber, setMobileNumber] = useState('')
+  const [country, setCountry] = useState('India')
+  const [state, setState] = useState('Maharashtra')
+  const [district, setDistrict] = useState('Pune')
+  const [taluka, setTaluka] = useState('Haveli')
+  const [localArea, setLocalArea] = useState('')
+  const [idType, setIdType] = useState('Citizen Government ID')
+  const [idNumber, setIdNumber] = useState('')
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const bricsCountries = useMemo(() => getBricsCountries(), [])
+  const countryConfig = useMemo(() => getCountryLocationConfig(country), [country])
+  const level1List = useMemo(() => getLevel1Options(country), [country])
+  const level2List = useMemo(() => (country && state ? getLevel2Options(country, state) : []), [country, state])
+  const level3List = useMemo(() => (country && state && district && countryConfig.hasLevel3 ? getLevel3Options(country, state, district) : []), [country, state, district, countryConfig.hasLevel3])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    if (!name.trim()) {
+      setError('Full Name is required.')
+      return
+    }
+    if (!mobileNumber.trim() || mobileNumber.trim().replace(/\D/g, '').length < 7) {
+      setError('A valid Mobile Phone Number is required (at least 7 digits).')
+      return
+    }
+    if (!idNumber.trim() || idNumber.trim().length < 4) {
+      setError('Government ID Card Number is required (minimum 4 characters).')
+      return
+    }
+    if (!state) {
+      setError('State/Region is required.')
+      return
+    }
+    if (!district) {
+      setError('District/City is required.')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await createMissingCitizenProfile({
+        uid: currentUser.uid,
+        email: currentUser.email,
+        name: name.trim(),
+        mobileNumber: mobileNumber.trim(),
+        country,
+        state,
+        district,
+        taluka: taluka || '',
+        localArea: localArea.trim(),
+        idType,
+        idNumber: idNumber.trim()
+      })
+      await onProfileCompleted()
+    } catch (err) {
+      console.error('Profile completion error:', err)
+      setError(err.message || 'Failed to complete profile. Please check credentials.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="signup-page">
+      <div className="signup-card" style={{ maxWidth: '520px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <div style={{ fontSize: '42px', marginBottom: '10px' }}>📋</div>
+          <h2>Complete Citizen Profile</h2>
+          <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.6' }}>
+            Account authenticated as <strong>{currentUser.email}</strong>.
+            Please provide your citizen details to activate instant access and complaint filing.
+          </p>
+        </div>
+
+        {error && <p className="error-message" style={{ marginBottom: '14px' }}>{error}</p>}
+
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="location-field">
+            <label>Full Name *</label>
+            <input
+              type="text"
+              placeholder="e.g. Divya Sharma"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div className="location-field" style={{ marginTop: '10px' }}>
+            <label>Mobile Phone Number *</label>
+            <input
+              type="tel"
+              placeholder="e.g. 9876543210"
+              value={mobileNumber}
+              onChange={(e) => setMobileNumber(e.target.value)}
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <div className="form-row-2 verification-fields-row" style={{ marginTop: '10px' }}>
+            <div className="location-field">
+              <label>ID Document Type *</label>
+              <select
+                value={idType}
+                onChange={(e) => setIdType(e.target.value)}
+                disabled={isSubmitting}
+                className="form-select"
+              >
+                <option value="Citizen Government ID">Government ID Card</option>
+                <option value="Voter ID">Voter ID</option>
+                <option value="Driving License">Driving License</option>
+                <option value="Passport">Passport</option>
+              </select>
+            </div>
+
+            <div className="location-field">
+              <label>Government ID Card Number *</label>
+              <input
+                type="text"
+                placeholder="e.g. ABC1234567"
+                value={idNumber}
+                onChange={(e) => setIdNumber(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Location Fields */}
+          <div className="location-field" style={{ marginTop: '10px' }}>
+            <label>Country *</label>
+            <select
+              value={country}
+              onChange={(e) => {
+                setCountry(e.target.value)
+                setState('')
+                setDistrict('')
+                setTaluka('')
+              }}
+              disabled={isSubmitting}
+              className="form-select"
+            >
+              {bricsCountries.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+
+          <div className="form-row-2" style={{ marginTop: '10px' }}>
+            <div className="location-field">
+              <label>{countryConfig.level1Label || 'State'} *</label>
+              <select
+                value={state}
+                onChange={(e) => {
+                  setState(e.target.value)
+                  setDistrict('')
+                  setTaluka('')
+                }}
+                disabled={isSubmitting}
+                className="form-select"
+              >
+                <option value="">Select {countryConfig.level1Label || 'State'}</option>
+                {level1List.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+              </select>
+            </div>
+
+            <div className="location-field">
+              <label>{countryConfig.level2Label || 'District'} *</label>
+              <select
+                value={district}
+                onChange={(e) => {
+                  setDistrict(e.target.value)
+                  setTaluka('')
+                }}
+                disabled={isSubmitting}
+                className="form-select"
+              >
+                <option value="">Select {countryConfig.level2Label || 'District'}</option>
+                {level2List.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {countryConfig.hasLevel3 && (
+            <div className="location-field" style={{ marginTop: '10px' }}>
+              <label>{countryConfig.level3Label || 'Taluka / Ward'} *</label>
+              <select
+                value={taluka}
+                onChange={(e) => setTaluka(e.target.value)}
+                disabled={isSubmitting}
+                className="form-select"
+              >
+                <option value="">Select {countryConfig.level3Label || 'Taluka'}</option>
+                {level3List.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          <div className="location-field" style={{ marginTop: '10px' }}>
+            <label>Local Area / Landmark *</label>
+            <input
+              type="text"
+              placeholder="e.g. Shivaji Nagar, Ward 4"
+              value={localArea}
+              onChange={(e) => setLocalArea(e.target.value)}
+              disabled={isSubmitting}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="primary-button"
+            style={{ width: '100%', marginTop: '20px' }}
+          >
+            {isSubmitting ? 'Saving Profile...' : 'Activate Citizen Account →'}
+          </button>
+        </form>
+
+        <div style={{ marginTop: '16px', textAlign: 'center' }}>
+          <button
+            type="button"
+            className="secondary-button"
+            style={{ width: '100%' }}
+            onClick={onLogout}
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function App() {
-  const { currentUser, userProfile, preferredLanguage, setLanguage, loading, register, googleLogin, logout } = useAuth()
+  const { currentUser, userProfile, preferredLanguage, setLanguage, loading, register, googleLogin, logout, refreshProfile } = useAuth()
   const activeLanguage = preferredLanguage || userProfile?.preferredLanguage || 'English'
   const t = getTranslation(activeLanguage)
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(() => Boolean(localStorage.getItem('civicpulse_language')))
@@ -234,6 +475,11 @@ function App() {
       valid = false
     }
 
+    if (!idNumber || idNumber.trim().length < 4) {
+      setIdError('Government ID Card Number is required (minimum 4 characters).')
+      valid = false
+    }
+
     if (!valid) {
       return
     }
@@ -265,8 +511,12 @@ function App() {
       })
     } catch (err) {
       console.error('Signup Error:', err)
-      if (err.code === 'auth/email-already-in-use') {
-        setEmailError('This email is already registered. Please login.')
+      if (err.field === 'email' || err.code === 'auth/email-already-in-use') {
+        setEmailError(err.message || 'This email is already registered. Please login.')
+      } else if (err.field === 'phone') {
+        setMobileError(err.message || 'This mobile phone number is already registered with another citizen account.')
+      } else if (err.field === 'governmentId') {
+        setIdError(err.message || 'This Government ID card number is already registered with another citizen account.')
       } else if (err.code === 'auth/weak-password') {
         setPasswordError('Password is too weak. Must be at least 8 characters.')
       } else {
@@ -275,6 +525,20 @@ function App() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // Dedicated Official Verification Request view (must be reachable even when session is restored/created)
+  if (showVerificationRequest) {
+    return (
+      <OfficialVerificationRequest
+        initialEmail={verificationEmail}
+        initialName={verificationName}
+        onBackToOfficialLogin={() => {
+          setShowVerificationRequest(false)
+          setShowOfficialLogin(true)
+        }}
+      />
+    )
   }
 
   // If user is authenticated, route to the corresponding hierarchical dashboard
@@ -289,33 +553,12 @@ function App() {
 
     if (userProfile === null) {
       return (
-        <div className="signup-page">
-          <div className="signup-card" style={{ maxWidth: '480px', textAlign: 'center' }}>
-            <div style={{ fontSize: '42px', marginBottom: '10px' }}>⚠️</div>
-            <h2>Account Profile Initialization</h2>
-            <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.6' }}>
-              We could not load a profile document for <strong>{currentUser.email}</strong>.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-              <button
-                type="button"
-                className="secondary-button"
-                style={{ flex: 1, marginTop: 0 }}
-                onClick={() => window.location.reload()}
-              >
-                🔄 Retry
-              </button>
-              <button
-                type="button"
-                className="primary-button"
-                style={{ flex: 1, marginTop: 0 }}
-                onClick={logout}
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProfileCompletionCard
+          currentUser={currentUser}
+          onProfileCompleted={refreshProfile}
+          onLogout={logout}
+          t={t}
+        />
       )
     }
 
@@ -331,18 +574,24 @@ function App() {
       return <StateAdminDashboard onLogout={logout} />
     }
 
-    // 3. District Admin Portal (District-wide Operations)
-    if (userProfile?.role === 'district_admin' && isVerifiedOfficialUser) {
-      return <DistrictAdminDashboard onLogout={logout} />
+    // 3. District Officer Portal (District Oversight & Taluka Supervision)
+    if (
+      (userProfile?.role === 'district_officer' || userProfile?.role === 'district_admin') &&
+      isVerifiedOfficialUser
+    ) {
+      return <DistrictOfficerDashboard onLogout={logout} />
     }
 
-    // 4. Taluka Citizen Access Employee (Taluka Citizen Gate)
-    if ((userProfile?.role === 'citizen_access_employee' || userProfile?.role === 'citizen_access_officer') && isVerifiedOfficialUser) {
-      return <CitizenAccessOfficerDashboard onLogout={logout} />
-    }
-
-    // 5. Taluka Issue Resolution Employee (Taluka Field Ops)
-    if ((userProfile?.role === 'issue_resolution_employee' || userProfile?.role === 'issue_resolution_officer' || userProfile?.role === 'official') && isVerifiedOfficialUser) {
+    // 4. Taluka Officer Portal (Taluka Field Operations & Problem Resolution)
+    if (
+      (userProfile?.role === 'taluka_officer' ||
+       userProfile?.role === 'citizen_access_employee' ||
+       userProfile?.role === 'citizen_access_officer' ||
+       userProfile?.role === 'issue_resolution_employee' ||
+       userProfile?.role === 'issue_resolution_officer' ||
+       userProfile?.role === 'official') &&
+      isVerifiedOfficialUser
+    ) {
       return <GovernmentDashboard onLogout={logout} />
     }
 
@@ -413,20 +662,6 @@ function App() {
 
     // 8. Citizen Dashboard
     return <Dashboard onLogout={logout} />
-  }
-
-  // Dedicated Official Verification Request view
-  if (showVerificationRequest) {
-    return (
-      <OfficialVerificationRequest
-        initialEmail={verificationEmail}
-        initialName={verificationName}
-        onBackToOfficialLogin={() => {
-          setShowVerificationRequest(false)
-          setShowOfficialLogin(true)
-        }}
-      />
-    )
   }
 
   // Dedicated Government Official Login view
@@ -680,19 +915,19 @@ function App() {
             )}
           </div>
 
-          {/* CITIZEN IDENTITY VERIFICATION SECTION */}
+          {/* CITIZEN GOVERNMENT IDENTIFICATION SECTION */}
           <div className="citizen-verification-card">
             <label className="verification-card-title">
               <IconShield size={18} color="#0FA58F" />
-              <span>{t.citizenIdentityVerification || 'Citizen Identity Verification Document'}</span>
+              <span>Citizen Government Identification</span>
             </label>
             <p className="verification-card-subtitle">
-              {t.citizenVerificationDesc || "New accounts start as Pending Verification and are validated by your local administrative area's Citizen Access Employee."}
+              Provide your unique Government ID card number and mobile phone for instant account activation and immediate complaint reporting.
             </p>
 
             <div className="form-row-2 verification-fields-row">
               <div className="location-field">
-                <label>{t.documentType || 'Document Type'}</label>
+                <label>{t.documentType || 'ID Document Type'} *</label>
                 <select
                   value={idType}
                   onChange={(e) => setIdType(e.target.value)}
@@ -707,18 +942,26 @@ function App() {
               </div>
 
               <div className="location-field">
-                <label>{t.idNumberOptional || 'ID Number (Optional)'}</label>
+                <label>Government ID Card Number *</label>
                 <input
                   type="text"
-                  placeholder={t.idNumberPlaceholder || 'e.g. DL-1420110012345'}
+                  placeholder="e.g. ABC1234567 or DL-1420110012345"
                   value={idNumber}
-                  onChange={(e) => setIdNumber(e.target.value)}
+                  onChange={(e) => {
+                    setIdNumber(e.target.value)
+                    setIdError('')
+                  }}
                   disabled={isSubmitting}
                 />
               </div>
             </div>
 
-            <div className="file-upload-wrapper">
+            {idError && <p className="error-message" style={{ marginTop: '6px' }}>{idError}</p>}
+
+            <div className="file-upload-wrapper" style={{ marginTop: '10px' }}>
+              <label style={{ fontSize: '12px', color: '#64748b', display: 'block', marginBottom: '4px' }}>
+                ID Card Image / PDF Scan (Optional)
+              </label>
               <input
                 type="file"
                 accept="image/*,application/pdf"
@@ -741,8 +984,6 @@ function App() {
                 <button type="button" className="remove-image-btn" onClick={handleRemoveIdFile}>✕ Remove</button>
               </div>
             )}
-
-            {idError && <p className="error-message">{idError}</p>}
           </div>
 
           <button

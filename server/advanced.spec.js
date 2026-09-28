@@ -9,7 +9,12 @@ const {
 } = require("./grouping");
 const {
   generateIdentityHash,
+  generatePhoneHash,
   normalizeGovernmentId,
+  normalizePhoneNumber,
+  normalizeEmail,
+  maskGovernmentId,
+  maskPhoneNumber,
 } = require("./identity");
 
 describe("CivicPulse Advanced Feature Unit Tests", () => {
@@ -141,6 +146,28 @@ describe("CivicPulse Advanced Feature Unit Tests", () => {
       const hash1 = generateIdentityHash("ID-AAAA-1111", secret);
       const hash2 = generateIdentityHash("ID-BBBB-2222", secret);
       assert.notEqual(hash1, hash2);
+    });
+
+    it("should normalize email address by trimming and lowercasing", () => {
+      assert.equal(normalizeEmail("  CITIZEN@Example.COM "), "citizen@example.com");
+    });
+
+    it("should normalize phone number by stripping spaces, dashes, and parentheses", () => {
+      assert.equal(normalizePhoneNumber("+91 (987) 654-3210"), "+919876543210");
+      assert.equal(normalizePhoneNumber("  98765-43210  "), "9876543210");
+    });
+
+    it("should generate identical HMAC-SHA256 hash for equivalent phone numbers", () => {
+      const secret = "test-secret-salt-2026";
+      const h1 = generatePhoneHash("+91 98765 43210", secret);
+      const h2 = generatePhoneHash("+91-9876543210", secret);
+      assert.equal(h1, h2);
+      assert.equal(h1.length, 64);
+    });
+
+    it("should mask sensitive Government ID and phone numbers for privacy", () => {
+      assert.equal(maskGovernmentId("ABC-1234-5678"), "XXXXXX5678");
+      assert.equal(maskPhoneNumber("+91 98765 43210"), "******3210");
     });
   });
 
