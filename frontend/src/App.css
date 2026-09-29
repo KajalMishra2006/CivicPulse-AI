@@ -724,6 +724,10 @@ textarea.form-input {
   text-align: center;
 }
 
+.hero-section p:last-child {
+  margin-bottom: 0;
+}
+
 /* Dark & Gradient Hero Contrast Enforcements */
 .superadmin-hero,
 .hero-section[style*="gradient"],

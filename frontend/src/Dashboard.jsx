@@ -195,29 +195,9 @@ function Dashboard({ onLogout }) {
               {t.welcomeDesc || 'Report civic problems, track their progress, and help create a better community.'}
             </p>
           </div>
-
-          <div className="hero-actions">
-            <button
-              type="button"
-              className="primary-button"
-              onClick={() => { stopTextToSpeech(); setActiveNav('submit'); }}
-            >
-              <IconPlusCircle size={17} />
-              <span>{(t.reportAnIssueBtn || 'Report an Issue').replace(/^\+\s*/, '')}</span>
-            </button>
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => { stopTextToSpeech(); setActiveNav('my_complaints'); }}
-            >
-              <IconFolder size={17} />
-              <span>{t.viewMyIssuesBtn || 'View My Issues'}</span>
-            </button>
-          </div>
         </section>
 
-        {/* CITIZEN 5-TIER CLEAN NAVIGATION TABS */}
+        {/* CITIZEN NAVIGATION TABS */}
         <div className="citizen-nav-tabs" style={{ display: 'flex', gap: '8px', margin: '20px 0', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px', flexWrap: 'wrap' }}>
           <button
             type="button"
@@ -257,16 +237,6 @@ function Dashboard({ onLogout }) {
           >
             <IconActivity size={16} />
             <span>Complaint Status</span>
-          </button>
-
-          <button
-            type="button"
-            className="filter-btn"
-            onClick={handleLogoutClick}
-            style={{ padding: '9px 18px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626' }}
-          >
-            <IconLogOut size={16} />
-            <span>Logout</span>
           </button>
         </div>
 
@@ -395,15 +365,6 @@ function Dashboard({ onLogout }) {
                   <option value="Electricity">{t.electricityPower || 'Electricity & Power'}</option>
                   <option value="Other">{t.otherCivic || 'Other Civic Issues'}</option>
                 </select>
-
-                <button
-                  type="button"
-                  className="primary-button"
-                  style={{ marginTop: 0, padding: '7px 14px', fontSize: '13px' }}
-                  onClick={() => setActiveNav('submit')}
-                >
-                  <span>+ New Complaint</span>
-                </button>
               </div>
             </div>
 
