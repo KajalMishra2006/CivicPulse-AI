@@ -6,7 +6,7 @@ import LanguageSelector from './LanguageSelector.jsx'
 import { IconArrowLeft } from './Icons.jsx'
 import './App.css'
 
-function Login({ onBackToSignup, onLogin, onGoToOfficialLogin }) {
+function Login({ onBackToSignup, onBackToHome, onLogin, onGoToOfficialLogin }) {
   const { login, googleLogin, preferredLanguage, setLanguage } = useAuth()
   const activeLanguage = preferredLanguage || 'English'
   const t = getTranslation(activeLanguage)
@@ -123,24 +123,24 @@ function Login({ onBackToSignup, onLogin, onGoToOfficialLogin }) {
   }
 
   return (
-    <div className="auth-view-page">
+    <div className="auth-view-page govbridge-auth-page">
       {/* 1. TOP NAVBAR / HEADER */}
       <header className="auth-top-header">
         <div className="auth-header-brand">
           <div
             className="govbridge-nav-brand"
-            onClick={onBackToSignup}
+            onClick={onBackToHome || onBackToSignup}
             style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
           >
             <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
           </div>
           <button
             type="button"
-            className="auth-nav-link-btn"
-            onClick={onBackToSignup}
+            className="auth-nav-link-btn govbridge-back-home-btn"
+            onClick={onBackToHome || onBackToSignup}
           >
             <IconArrowLeft size={14} />
-            <span>{t.home || 'Home'}</span>
+            <span>{t.backToHome || 'Back to Home'}</span>
           </button>
         </div>
 
@@ -252,6 +252,23 @@ function Login({ onBackToSignup, onLogin, onGoToOfficialLogin }) {
               /* STANDARD SIGN IN VIEW                          */
               /* ============================================== */
               <div>
+                {/* Role Switcher Tabs */}
+                <div className="govbridge-auth-role-tabs">
+                  <button
+                    type="button"
+                    className="auth-role-tab active"
+                  >
+                    Citizen
+                  </button>
+                  <button
+                    type="button"
+                    className="auth-role-tab"
+                    onClick={onGoToOfficialLogin}
+                  >
+                    Government Official
+                  </button>
+                </div>
+
                 <h1>{t.welcomeBack || 'Welcome Back'}</h1>
 
                 <p className="signup-description">

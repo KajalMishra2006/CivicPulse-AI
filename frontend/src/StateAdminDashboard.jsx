@@ -11,6 +11,8 @@ import {
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from './firebase/config.js'
 import { getDistrictsForState } from './utils/locations.js'
+import DashboardNavbar from './DashboardNavbar.jsx'
+import DashboardHero from './DashboardHero.jsx'
 import './App.css'
 
 function StateAdminDashboard({ onLogout }) {
@@ -230,43 +232,21 @@ function StateAdminDashboard({ onLogout }) {
   return (
     <div className="dashboard-page">
       {/* 1. TOP NAVBAR */}
-      <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div className="govbridge-nav-brand">
-            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
-          </div>
-          <span className="official-badge" style={{ background: '#0284c7' }}>
-            State Administration Portal
-          </span>
-          <span style={{ fontSize: '13px', background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
-            🏛️ {stateName}
-          </span>
-        </div>
-
-        <div className="official-user-tag">
-          <span>{userProfile?.name || currentUser?.email}</span>
-          <button
-            type="button"
-            className="secondary-button"
-            style={{ marginTop: 0 }}
-            onClick={onLogout || logout}
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
+      <DashboardNavbar
+        activeRole="official"
+        locationText={`${stateName} State`}
+        userName={userProfile?.name || currentUser?.displayName || currentUser?.email}
+        onLogout={onLogout || logout}
+      />
 
       {/* 2. MAIN VIEWPORT */}
       <main className="dashboard-content">
-        <section className="hero-section" style={{ background: 'linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%)', color: 'white' }}>
-          <div>
-            <p className="welcome-label" style={{ color: '#7dd3fc' }}>STATE EXECUTIVE HEADQUARTERS</p>
-            <h1 style={{ color: 'white' }}>{stateName} State Administration</h1>
-            <p style={{ color: '#e0f2fe' }}>
-              Direct oversight of districts, District Administrators, taluka metrics, and state-level civic complaint turnaround times.
-            </p>
-          </div>
-        </section>
+        <DashboardHero
+          eyebrow="STATE EXECUTIVE HEADQUARTERS"
+          title={`${stateName} State Administration`}
+          subtitle="Direct oversight of regional districts and complaint turnaround metrics"
+          description="Direct oversight of districts, District Administrators, taluka metrics, and state-level civic complaint turnaround times."
+        />
 
         {actionSuccess && (
           <div className="main-error" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: '#065f46' }}>

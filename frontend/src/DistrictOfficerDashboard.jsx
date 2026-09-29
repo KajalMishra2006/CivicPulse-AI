@@ -31,6 +31,8 @@ import {
   IconMapPin,
   IconShield
 } from './Icons.jsx'
+import DashboardNavbar from './DashboardNavbar.jsx'
+import DashboardHero from './DashboardHero.jsx'
 import './App.css'
 
 export default function DistrictOfficerDashboard({ onLogout }) {
@@ -472,46 +474,22 @@ export default function DistrictOfficerDashboard({ onLogout }) {
   return (
     <div className="dashboard-page">
       {/* 1. TOP NAVBAR */}
-      <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div className="govbridge-nav-brand">
-            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
-          </div>
-          <span className="official-badge" style={{ background: '#0284c7' }}>
-            <IconBuilding size={14} />
-            <span>District Officer Portal</span>
-          </span>
-          <span style={{ fontSize: '13px', background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
-            📍 {districtName} District, {stateName}
-          </span>
-        </div>
-
-        <div className="official-user-tag">
-          <span>{userProfile?.name || currentUser?.email}</span>
-          <button
-            type="button"
-            className="secondary-button"
-            style={{ marginTop: 0 }}
-            onClick={onLogout || logout}
-          >
-            <IconLogOut size={13} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </nav>
+      <DashboardNavbar
+        activeRole="official"
+        locationText={`${districtName} District, ${stateName}`}
+        userName={userProfile?.name || currentUser?.displayName || currentUser?.email}
+        onLogout={onLogout || logout}
+      />
 
       {/* 2. MAIN DASHBOARD CONTENT */}
       <main className="dashboard-content">
         {/* HERO BANNER */}
-        <section className="hero-section" style={{ background: 'linear-gradient(135deg, #0369a1 0%, #0284c7 100%)', color: 'white' }}>
-          <div>
-            <p className="welcome-label" style={{ color: '#bae6fd' }}>DISTRICT OPERATIONAL COMMAND</p>
-            <h1 style={{ color: 'white' }}>{districtName} District Officer Operations</h1>
-            <p style={{ color: '#e0f2fe' }}>
-              Unified administration for {districtName} District. Real-time citizen statistics, registration trends, and full civic complaint resolution.
-            </p>
-          </div>
-        </section>
+        <DashboardHero
+          eyebrow="DISTRICT OPERATIONAL COMMAND"
+          title={`${districtName} District Officer Operations`}
+          subtitle="Unified administration for citizen statistics and regional civic complaints"
+          description={`Unified administration for ${districtName} District. Real-time citizen statistics, registration trends, and full civic complaint resolution.`}
+        />
 
         {actionSuccess && (
           <div className="main-error" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: '#065f46', marginBottom: '14px' }}>

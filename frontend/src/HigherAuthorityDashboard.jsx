@@ -4,6 +4,8 @@ import { subscribeAllIssues } from './firebase/issues.js'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from './firebase/config.js'
 import { INDIAN_STATES_AND_DISTRICTS, getDistrictsForState } from './utils/locations.js'
+import DashboardNavbar from './DashboardNavbar.jsx'
+import DashboardHero from './DashboardHero.jsx'
 import './App.css'
 
 function HigherAuthorityDashboard({ onLogout }) {
@@ -202,31 +204,12 @@ function HigherAuthorityDashboard({ onLogout }) {
   return (
     <div className="dashboard-page">
       {/* 1. TOP NAVBAR */}
-      <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div className="govbridge-nav-brand">
-            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
-          </div>
-          <span className="official-badge" style={{ background: '#4338ca' }}>
-            Higher Authority Oversight Portal
-          </span>
-          <span style={{ fontSize: '13px', background: '#e0e7ff', color: '#3730a3', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
-            🏛️ Cross-Jurisdiction Command
-          </span>
-        </div>
-
-        <div className="official-user-tag">
-          <span>{userProfile?.name || currentUser?.email || 'Executive Authority'}</span>
-          <button
-            type="button"
-            className="secondary-button"
-            style={{ marginTop: 0 }}
-            onClick={handleLogoutClick}
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
+      <DashboardNavbar
+        activeRole="official"
+        locationText="Executive Oversight"
+        userName={userProfile?.name || currentUser?.displayName || currentUser?.email || 'Executive Authority'}
+        onLogout={handleLogoutClick}
+      />
 
       {/* 2. MAIN OVERSIGHT VIEWPORT */}
       <main className="dashboard-content">
@@ -236,15 +219,12 @@ function HigherAuthorityDashboard({ onLogout }) {
           </div>
         ) : (
           <>
-            <section className="hero-section" style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', color: 'white' }}>
-              <div>
-                <p className="welcome-label" style={{ color: '#818cf8' }}>MUNICIPAL INTELLIGENCE & GOVERNANCE DASHBOARD</p>
-                <h1 style={{ color: 'white' }}>Civic Resolution & Performance Analytics</h1>
-                <p style={{ color: '#c7d2fe' }}>
-                  Strategic oversight across Indian states and municipal districts. Monitor civic complaint volumes, resolution speed, and department workloads.
-                </p>
-              </div>
-            </section>
+            <DashboardHero
+              eyebrow="MUNICIPAL INTELLIGENCE & GOVERNANCE DASHBOARD"
+              title="Civic Resolution & Performance Analytics"
+              subtitle="Strategic cross-jurisdiction municipal operations and workload analysis"
+              description="Strategic oversight across Indian states and municipal districts. Monitor civic complaint volumes, resolution speed, and department workloads."
+            />
 
         {/* 3. DYNAMIC GEOGRAPHIC & TIME CONTROLS */}
         <section style={{ margin: '20px 0', padding: '16px 20px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>

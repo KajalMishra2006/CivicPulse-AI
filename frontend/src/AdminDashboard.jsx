@@ -6,6 +6,8 @@ import {
   rejectVerificationRequest
 } from './firebase/verification.js'
 import { INDIAN_STATES_AND_DISTRICTS, getDistrictsForState } from './utils/locations.js'
+import DashboardNavbar from './DashboardNavbar.jsx'
+import DashboardHero from './DashboardHero.jsx'
 import './App.css'
 
 function AdminDashboard({ onLogout }) {
@@ -143,43 +145,21 @@ function AdminDashboard({ onLogout }) {
   return (
     <div className="dashboard-page">
       {/* 1. TOP NAVBAR */}
-      <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div className="govbridge-nav-brand">
-            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
-          </div>
-          <span className="official-badge" style={{ background: '#7c3aed' }}>
-            System Administrator Portal
-          </span>
-          <span style={{ fontSize: '13px', background: '#ede9fe', color: '#6d28d9', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
-            🛡️ Role & Access Control Command
-          </span>
-        </div>
-
-        <div className="official-user-tag">
-          <span>{userProfile?.name || currentUser?.email || 'Administrator'}</span>
-          <button
-            type="button"
-            className="secondary-button"
-            style={{ marginTop: 0 }}
-            onClick={handleLogoutClick}
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
+      <DashboardNavbar
+        activeRole="official"
+        locationText="Role & Access Control Command"
+        userName={userProfile?.name || currentUser?.displayName || currentUser?.email || 'Administrator'}
+        onLogout={handleLogoutClick}
+      />
 
       {/* 2. MAIN ADMIN CONTENT */}
       <main className="dashboard-content">
-        <section className="hero-section">
-          <div>
-            <p className="welcome-label" style={{ color: '#7c3aed' }}>GOVERNMENT EMPLOYEE VERIFICATION & ACCESS GOVERNANCE</p>
-            <h1>Employee Role & Access Management</h1>
-            <p>
-              Verify official government employee applications, validate municipal credentials and employee ID cards, and assign jurisdiction roles.
-            </p>
-          </div>
-        </section>
+        <DashboardHero
+          eyebrow="GOVERNMENT EMPLOYEE VERIFICATION & ACCESS GOVERNANCE"
+          title="Employee Role & Access Management"
+          subtitle="Validate official credentials and assign administrative roles"
+          description="Verify official government employee applications, validate municipal credentials and employee ID cards, and assign jurisdiction roles."
+        />
 
         {actionSuccess && (
           <div className="main-error" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: '#065f46' }}>

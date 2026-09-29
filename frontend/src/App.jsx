@@ -21,7 +21,8 @@ import {
   getLevel2Options,
   getLevel3Options
 } from './utils/locations.js'
-import { IconShield, IconBuilding } from './Icons.jsx'
+import { IconShield, IconBuilding, IconArrowLeft } from './Icons.jsx'
+import WelcomePage from './WelcomePage.jsx'
 import './App.css'
 
 function ProfileCompletionCard({ currentUser, onProfileCompleted, onLogout, t }) {
@@ -351,11 +352,14 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Navigation states for unauthenticated flows
+  const [showWelcome, setShowWelcome] = useState(true)
   const [showLogin, setShowLogin] = useState(false)
   const [showOfficialLogin, setShowOfficialLogin] = useState(false)
   const [showVerificationRequest, setShowVerificationRequest] = useState(false)
   const [verificationEmail, setVerificationEmail] = useState('')
   const [verificationName, setVerificationName] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   function handleIdFileChange(e) {
     setIdError('')
@@ -664,11 +668,31 @@ function App() {
     return <Dashboard onLogout={logout} />
   }
 
+  // 0. Welcome / Landing Page (Initial first view before authentication)
+  if (showWelcome && !showLogin && !showOfficialLogin && !showVerificationRequest) {
+    return (
+      <WelcomePage
+        onGetStarted={() => setShowWelcome(false)}
+        onGoToLogin={() => {
+          setShowWelcome(false)
+          setShowLogin(true)
+        }}
+        activeLanguage={activeLanguage}
+        setLanguage={setLanguage}
+        t={t}
+      />
+    )
+  }
+
   // Dedicated Government Official Login view
   if (showOfficialLogin) {
     return (
       <OfficialLogin
         onBackToCitizenLogin={() => setShowOfficialLogin(false)}
+        onBackToHome={() => {
+          setShowOfficialLogin(false)
+          setShowWelcome(true)
+        }}
         onGoToVerificationRequest={(emailVal, nameVal) => {
           setVerificationEmail(emailVal || '')
           setVerificationName(nameVal || '')
@@ -684,6 +708,10 @@ function App() {
     return (
       <Login
         onBackToSignup={() => setShowLogin(false)}
+        onBackToHome={() => {
+          setShowLogin(false)
+          setShowWelcome(true)
+        }}
         onLogin={() => setShowLogin(false)}
         onGoToOfficialLogin={() => {
           setShowLogin(false)
@@ -695,37 +723,63 @@ function App() {
 
   // Default: Multilingual Citizen Registration & Sign-Up View
   return (
-    <div className="signup-page">
-      <div className="signup-card">
-        {/* Clean Single-Row Header: Complete GovBridge Logo (Left) & Preferred Language (Right) */}
-        <div className="signup-header header">
-          <div className="brand-logo signup-brand-logo">
-            <img
-              src="/govbridge-logo.png"
-              alt="GovBridge - Bridging Voices. Driving Action."
-              className="govbridge-logo-img signup-header-logo"
-            />
+    <div className="auth-view-page govbridge-auth-page">
+      {/* 1. TOP NAVBAR / HEADER */}
+      <header className="auth-top-header">
+        <div className="auth-header-brand">
+          <div
+            className="govbridge-nav-brand"
+            onClick={() => setShowWelcome(true)}
+            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+          >
+            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
           </div>
-          <div className="language-selector signup-language-selector">
-            <LanguageSelector
-              currentLanguage={activeLanguage}
-              onSelectLanguage={setLanguage}
-              variant="dark"
-              label={t.preferredLanguage || 'Preferred Language'}
-            />
-          </div>
+          <button
+            type="button"
+            className="auth-nav-link-btn govbridge-back-home-btn"
+            onClick={() => setShowWelcome(true)}
+          >
+            <IconArrowLeft size={14} />
+            <span>{t.backToHome || 'Back to Home'}</span>
+          </button>
         </div>
 
-        {/* Subtle Horizontal Divider Line */}
-        <div className="signup-header-divider" />
+        <LanguageSelector
+          currentLanguage={activeLanguage}
+          onSelectLanguage={setLanguage}
+          variant="dark"
+          label={t.preferredLanguage || 'Preferred Language'}
+        />
+      </header>
 
-        {/* Centered Create Account Section */}
-        <div className="signup-heading-section">
-          <h1>{t.createAccount || 'Create Account'}</h1>
-          <p className="signup-description">
-            {t.signupSubtitle || 'Create your GovBridge account to report and track civic issues.'}
-          </p>
-        </div>
+      {/* 2. MAIN CENTERED AUTHENTICATION CARD */}
+      <main className="auth-center-container">
+        <div className="auth-center-card-wrapper">
+          <div className="signup-card auth-card-transition" style={{ maxWidth: '600px' }}>
+            {/* Role Switcher Tabs */}
+            <div className="govbridge-auth-role-tabs">
+              <button
+                type="button"
+                className="auth-role-tab active"
+              >
+                Citizen
+              </button>
+              <button
+                type="button"
+                className="auth-role-tab"
+                onClick={() => setShowOfficialLogin(true)}
+              >
+                Government Official
+              </button>
+            </div>
+
+            {/* Centered Create Account Section */}
+            <div className="signup-heading-section">
+              <h1>{t.createAccount || 'Create Account'}</h1>
+              <p className="signup-description">
+                {t.signupSubtitle || 'Join GovBridge and be a part of a better tomorrow.'}
+              </p>
+            </div>
 
         {authError && <p className="error-message main-error">{authError}</p>}
 
@@ -776,26 +830,72 @@ function App() {
           {/* PASSWORD */}
           <div className="location-field">
             <label>{t.password || 'Password'} *</label>
-            <input
-              type="password"
-              placeholder={t.passwordPlaceholder || 'Create a password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isSubmitting}
-            />
+            <div className="password-input-wrapper">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder={t.passwordPlaceholder || 'Create a password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isSubmitting}
+                className="form-input"
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
             {passwordError && <p className="error-message">{passwordError}</p>}
           </div>
 
           {/* CONFIRM PASSWORD */}
           <div className="location-field">
             <label>{t.confirmPassword || 'Confirm Password'} *</label>
-            <input
-              type="password"
-              placeholder={t.confirmPasswordPlaceholder || 'Confirm your password'}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={isSubmitting}
-            />
+            <div className="password-input-wrapper">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder={t.confirmPasswordPlaceholder || 'Confirm your password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={isSubmitting}
+                className="form-input"
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
             {confirmPasswordError && <p className="error-message">{confirmPasswordError}</p>}
           </div>
 
@@ -1034,8 +1134,10 @@ function App() {
             <span>{t.officialSignInBtn || 'Official Sign In →'}</span>
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </main>
+  </div>
   )
 }
 

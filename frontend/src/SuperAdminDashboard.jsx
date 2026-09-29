@@ -25,6 +25,8 @@ import {
   IconLogOut,
   IconXCircle
 } from './Icons.jsx'
+import DashboardNavbar from './DashboardNavbar.jsx'
+import DashboardHero from './DashboardHero.jsx'
 import './App.css'
 
 function SuperAdminDashboard({ onLogout }) {
@@ -303,44 +305,22 @@ function SuperAdminDashboard({ onLogout }) {
   return (
     <div className="dashboard-page">
       {/* 1. TOP NAVBAR */}
-      <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div className="govbridge-nav-brand">
-            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
-          </div>
-          <span className="official-badge" style={{ background: '#4338ca', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <IconShield size={14} />
-            <span>National Super Admin Command</span>
-          </span>
-          <span style={{ fontSize: '13px', background: '#e0e7ff', color: '#3730a3', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
-            🇮🇳 All States & Territories
-          </span>
-        </div>
-
-        <div className="official-user-tag">
-          <span className="user-name-text">{userProfile?.name || currentUser?.email || 'Super Admin'}</span>
-          <button
-            type="button"
-            className="navbar-logout-btn"
-            onClick={handleLogoutClick}
-          >
-            <IconLogOut size={13} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </nav>
+      <DashboardNavbar
+        activeRole="official"
+        locationText="National Apex Command"
+        userName={userProfile?.name || currentUser?.displayName || currentUser?.email || 'Super Admin'}
+        onLogout={handleLogoutClick}
+      />
 
       {/* 2. MAIN VIEWPORT */}
       <main className="dashboard-content">
-        <section className="hero-section superadmin-hero">
-          <div>
-            <p className="welcome-label eyebrow-heading">NATIONAL GOVERNANCE & HIERARCHY OVERSIGHT</p>
-            <h1 className="superadmin-hero-title">Super Admin Apex Portal</h1>
-            <p className="superadmin-hero-subtitle">
-              High-level strategic administration. Appoint State Administrators, monitor state performance, and enforce nationwide RBAC policies.
-            </p>
-          </div>
-        </section>
+        <DashboardHero
+          eyebrow="NATIONAL GOVERNANCE & HIERARCHY OVERSIGHT"
+          title="Super Admin Apex Portal"
+          subtitle="Strategic national administration and state leadership oversight"
+          description="High-level strategic administration. Appoint State Administrators, monitor state performance, and enforce nationwide RBAC policies."
+          icon={IconShield}
+        />
 
         {actionSuccess && (
           <div className="main-error" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: '#065f46' }}>

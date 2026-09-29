@@ -9,6 +9,8 @@ import {
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from './firebase/config.js'
 import { getTalukasForDistrict } from './utils/locations.js'
+import DashboardNavbar from './DashboardNavbar.jsx'
+import DashboardHero from './DashboardHero.jsx'
 import './App.css'
 
 function DistrictAdminDashboard({ onLogout }) {
@@ -193,43 +195,21 @@ function DistrictAdminDashboard({ onLogout }) {
   return (
     <div className="dashboard-page">
       {/* 1. TOP NAVBAR */}
-      <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div className="govbridge-nav-brand">
-            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
-          </div>
-          <span className="official-badge" style={{ background: '#0d9488' }}>
-            District Administration Portal
-          </span>
-          <span style={{ fontSize: '13px', background: '#ccfbf1', color: '#0f766e', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
-            📍 {districtName}, {stateName}
-          </span>
-        </div>
-
-        <div className="official-user-tag">
-          <span>{userProfile?.name || currentUser?.email}</span>
-          <button
-            type="button"
-            className="secondary-button"
-            style={{ marginTop: 0 }}
-            onClick={onLogout || logout}
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
+      <DashboardNavbar
+        activeRole="official"
+        locationText={`${districtName}, ${stateName}`}
+        userName={userProfile?.name || currentUser?.displayName || currentUser?.email}
+        onLogout={onLogout || logout}
+      />
 
       {/* 2. MAIN VIEWPORT */}
       <main className="dashboard-content">
-        <section className="hero-section" style={{ background: 'linear-gradient(135deg, #115e59 0%, #0d9488 100%)', color: 'white' }}>
-          <div>
-            <p className="welcome-label" style={{ color: '#99f6e4' }}>DISTRICT MUNICIPAL OPERATIONS</p>
-            <h1 style={{ color: 'white' }}>{districtName} District Administration</h1>
-            <p style={{ color: '#ccfbf1' }}>
-              Manage Taluka Citizen Access Employees, Issue Resolution Employees, taluka performance, and district-wide civic resolutions.
-            </p>
-          </div>
-        </section>
+        <DashboardHero
+          eyebrow="DISTRICT MUNICIPAL OPERATIONS"
+          title={`${districtName} District Administration`}
+          subtitle="Manage taluka personnel, performance, and district-wide civic resolutions"
+          description="Manage Taluka Citizen Access Employees, Issue Resolution Employees, taluka performance, and district-wide civic resolutions."
+        />
 
         {actionSuccess && (
           <div className="main-error" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: '#065f46' }}>

@@ -18,6 +18,8 @@ import {
 } from './utils/speech.js'
 import { translateComplaintDynamic } from './utils/complaintTranslator.js'
 import ComplaintStatusChart from './ComplaintStatusChart.jsx'
+import DashboardNavbar from './DashboardNavbar.jsx'
+import DashboardHero from './DashboardHero.jsx'
 import './App.css'
 
 function GovernmentDashboard({ onLogout }) {
@@ -329,43 +331,21 @@ function GovernmentDashboard({ onLogout }) {
   return (
     <div className="dashboard-page">
       {/* 1. TOP NAVBAR */}
-      <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div className="govbridge-nav-brand">
-            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
-          </div>
-          <span className="official-badge" style={{ background: '#059669' }}>
-            Taluka Officer Operational Portal
-          </span>
-          <span style={{ fontSize: '13px', background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
-            📍 {talukaName} Taluka, {districtName}
-          </span>
-        </div>
-
-        <div className="official-user-tag">
-          <span>{userProfile?.name || currentUser?.email}</span>
-          <button
-            type="button"
-            className="secondary-button"
-            style={{ marginTop: 0 }}
-            onClick={onLogout || logout}
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
+      <DashboardNavbar
+        activeRole="official"
+        locationText={`${talukaName} Taluka, ${districtName}`}
+        userName={userProfile?.name || currentUser?.displayName || currentUser?.email}
+        onLogout={onLogout || logout}
+      />
 
       {/* 2. MAIN VIEWPORT */}
       <main className="dashboard-content">
-        <section className="hero-section" style={{ background: 'linear-gradient(135deg, #065f46 0%, #059669 100%)', color: 'white' }}>
-          <div>
-            <p className="welcome-label" style={{ color: '#a7f3d0' }}>TALUKA OFFICER OPERATIONAL COMMAND</p>
-            <h1 style={{ color: 'white' }}>{talukaName} Taluka Civic Resolution</h1>
-            <p style={{ color: '#d1fae5' }}>
-              Real-time local complaint queue sorted by AI Priority Score. Manage field investigations, dynamic multilingual translations, voice reading, and mark status: Pending → In Progress → Resolved.
-            </p>
-          </div>
-        </section>
+        <DashboardHero
+          eyebrow="TALUKA OFFICER OPERATIONAL COMMAND"
+          title={`${talukaName} Taluka Civic Resolution`}
+          subtitle="Real-time local complaint queue sorted by AI Priority Score"
+          description="Manage field investigations, dynamic multilingual translations, voice reading, and mark status: Pending → In Progress → Resolved."
+        />
 
         {error && <p className="error-message main-error">{error}</p>}
 

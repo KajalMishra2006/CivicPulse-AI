@@ -236,3 +236,70 @@ export function IconFileText({ size = 20, className = '', color = 'currentColor'
     </svg>
   )
 }
+
+export function IconBrain({ size = 20, className = '', color = 'currentColor', style = {} }) {
+  return (
+    <svg {...baseProps} width={size} height={size} stroke={color} className={className} style={{ ...baseProps.style, ...style }}>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <rect x="9" y="9" width="6" height="6" />
+      <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" />
+    </svg>
+  )
+}
+
+export function IconLeaf({ size = 20, className = '', color = 'currentColor', style = {} }) {
+  return (
+    <svg {...baseProps} width={size} height={size} stroke={color} className={className} style={{ ...baseProps.style, ...style }}>
+      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+      <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+    </svg>
+  )
+}
+
+export function IconUser({ size = 20, className = '', color = 'currentColor', style = {} }) {
+  return (
+    <svg {...baseProps} width={size} height={size} stroke={color} className={className} style={{ ...baseProps.style, ...style }}>
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  )
+}
+
+export function IconMail({ size = 20, className = '', color = 'currentColor', style = {} }) {
+  return (
+    <svg {...baseProps} width={size} height={size} stroke={color} className={className} style={{ ...baseProps.style, ...style }}>
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+  )
+}
+
+export function IconLock({ size = 20, className = '', color = 'currentColor', style = {} }) {
+  return (
+    <svg {...baseProps} width={size} height={size} stroke={color} className={className} style={{ ...baseProps.style, ...style }}>
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  )
+}
+
+export function IconHome({ size = 20, className = '', color = 'currentColor', style = {} }) {
+  return (
+    <svg {...baseProps} width={size} height={size} stroke={color} className={className} style={{ ...baseProps.style, ...style }}>
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  )
+}
+
+export function IconCalendar({ size = 20, className = '', color = 'currentColor', style = {} }) {
+  return (
+    <svg {...baseProps} width={size} height={size} stroke={color} className={className} style={{ ...baseProps.style, ...style }}>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  )
+}
+

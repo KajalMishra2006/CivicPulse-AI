@@ -5,6 +5,8 @@ import {
   approveCitizenIdentity,
   rejectCitizenIdentity
 } from './firebase/verification.js'
+import DashboardNavbar from './DashboardNavbar.jsx'
+import DashboardHero from './DashboardHero.jsx'
 import './App.css'
 
 function CitizenAccessOfficerDashboard({ onLogout }) {
@@ -96,43 +98,21 @@ function CitizenAccessOfficerDashboard({ onLogout }) {
   return (
     <div className="dashboard-page">
       {/* 1. TOP NAVBAR */}
-      <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <div className="govbridge-nav-brand">
-            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
-          </div>
-          <span className="official-badge" style={{ background: '#0284c7' }}>
-            Citizen Access Portal
-          </span>
-          <span style={{ fontSize: '13px', background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
-            📍 {talukaName}, {districtName}
-          </span>
-        </div>
-
-        <div className="official-user-tag">
-          <span>{userProfile?.name || currentUser?.email}</span>
-          <button
-            type="button"
-            className="secondary-button"
-            style={{ marginTop: 0 }}
-            onClick={onLogout || logout}
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
+      <DashboardNavbar
+        activeRole="official"
+        locationText={`${talukaName}, ${districtName}`}
+        userName={userProfile?.name || currentUser?.displayName || currentUser?.email}
+        onLogout={onLogout || logout}
+      />
 
       {/* 2. MAIN VIEWPORT */}
       <main className="dashboard-content">
-        <section className="hero-section" style={{ background: 'linear-gradient(135deg, #075985 0%, #0284c7 100%)', color: 'white' }}>
-          <div>
-            <p className="welcome-label" style={{ color: '#7dd3fc' }}>CITIZEN IDENTITY & ACCESS VERIFICATION</p>
-            <h1 style={{ color: 'white' }}>{talukaName} Taluka Citizen Gate</h1>
-            <p style={{ color: '#e0f2fe' }}>
-              Review and validate citizen identity documents for {talukaName} Taluka, {districtName} District. Approved citizens are unlocked to submit complaints.
-            </p>
-          </div>
-        </section>
+        <DashboardHero
+          eyebrow="CITIZEN IDENTITY & ACCESS VERIFICATION"
+          title={`${talukaName} Taluka Citizen Gate`}
+          subtitle="Review and validate regional citizen identity registrations"
+          description={`Review and validate citizen identity documents for ${talukaName} Taluka, ${districtName} District. Approved citizens are unlocked to submit complaints.`}
+        />
 
         {actionSuccess && (
           <div className="main-error" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)', color: '#065f46' }}>

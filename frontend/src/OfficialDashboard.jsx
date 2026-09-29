@@ -17,6 +17,8 @@ import {
   translatePriority
 } from './utils/translations.js'
 import LanguageSelector from './LanguageSelector.jsx'
+import DashboardNavbar from './DashboardNavbar.jsx'
+import DashboardHero from './DashboardHero.jsx'
 import './App.css'
 
 function OfficialDashboard({ onLogout }) {
@@ -134,47 +136,25 @@ function OfficialDashboard({ onLogout }) {
 
   return (
     <div className="dashboard-page">
-      <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="govbridge-nav-brand">
-            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
-          </div>
-          <span className="official-badge">{t.officialPortal || 'Official Portal'}</span>
-        </div>
+      {/* 1. TOP NAVBAR */}
+      <DashboardNavbar
+        activeRole="official"
+        locationText="Municipal Resolution Portal"
+        userName={userProfile?.name || currentUser?.displayName || currentUser?.email || 'Government Official'}
+        onLogout={handleLogoutClick}
+        showLanguageSelector={true}
+        currentLanguage={governmentPreferredLanguage}
+        onSelectLanguage={handleGovLanguageChange}
+      />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Government Language Dropdown */}
-          <LanguageSelector
-            currentLanguage={governmentPreferredLanguage}
-            onSelectLanguage={handleGovLanguageChange}
-            variant="light"
-            label={t.governmentLanguage || 'Govt Language'}
-          />
-
-          <div className="official-user-tag">
-            <span>{userProfile?.name || currentUser?.email || 'Government Official'}</span>
-            <button
-              type="button"
-              className="secondary-button"
-              style={{ marginTop: 0 }}
-              onClick={handleLogoutClick}
-            >
-              {t.logout || 'Logout'}
-            </button>
-          </div>
-        </div>
-      </nav>
-
+      {/* 2. MAIN CONTENT */}
       <main className="dashboard-content">
-        <section className="hero-section">
-          <div>
-            <p className="welcome-label">GOVERNMENT & MUNICIPAL PORTAL</p>
-            <h1>{t.civicIssuesOverview || 'Civic Issues Overview'}</h1>
-            <p>
-              {t.officialOverviewDesc || 'Review all citizen-reported infrastructure issues, track departmental progress, and update issue statuses in real time.'}
-            </p>
-          </div>
-        </section>
+        <DashboardHero
+          eyebrow="GOVERNMENT & MUNICIPAL PORTAL"
+          title={t.civicIssuesOverview || 'Civic Issues Overview'}
+          subtitle="Real-time citizen infrastructure queue & departmental progress"
+          description={t.officialOverviewDesc || 'Review all citizen-reported infrastructure issues, track departmental progress, and update issue statuses in real time.'}
+        />
 
         {actionError && <p className="error-message main-error">{actionError}</p>}
 

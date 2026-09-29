@@ -224,7 +224,7 @@ function OfficialVerificationRequest({ initialEmail = '', initialName = '', onBa
   }
 
   return (
-    <div className="signup-page">
+    <div className="signup-page govbridge-auth-page">
       <div className="signup-card" style={{ maxWidth: '620px' }}>
         <button
           type="button"

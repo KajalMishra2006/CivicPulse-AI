@@ -27,8 +27,11 @@ import {
   IconFolder,
   IconLogOut,
   IconUsers,
-  IconMapPin
+  IconMapPin,
+  IconCalendar
 } from './Icons.jsx'
+import DashboardNavbar from './DashboardNavbar.jsx'
+import DashboardHero from './DashboardHero.jsx'
 import './App.css'
 
 function Dashboard({ onLogout }) {
@@ -143,101 +146,86 @@ function Dashboard({ onLogout }) {
 
   return (
     <div className="dashboard-page">
-      {/* 1. TOP NAVIGATION BAR */}
-      <nav className="navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div
-            className="govbridge-nav-brand"
-            onClick={() => { stopTextToSpeech(); setActiveNav('my_complaints'); }}
-            title="GovBridge Home"
-            style={{ cursor: 'pointer' }}
-          >
-            <img src="/govbridge-logo.png" alt="GovBridge" className="govbridge-nav-logo" />
-          </div>
-          <span className="citizen-badge">
-            <IconBuilding size={14} />
-            <span>{t.citizen || 'Citizen Portal'}</span>
-          </span>
-          <span style={{ fontSize: '13px', background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '20px', fontWeight: '700' }}>
-            📍 {userProfile?.talukaName || userProfile?.taluka || 'Local'}, {userProfile?.districtName || userProfile?.district || 'District'}
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-          <LanguageSelector
-            currentLanguage={activeLanguage}
-            onSelectLanguage={setLanguage}
-            variant="dark"
-            label={t.language || 'Language'}
-          />
-
-          <div className="user-profile-tag">
-            <span className="user-name-text">{userProfile?.name || currentUser?.displayName || currentUser?.email}</span>
-            <button
-              type="button"
-              className="navbar-logout-btn"
-              onClick={handleLogoutClick}
-            >
-              <IconLogOut size={13} />
-              <span>{t.logout || 'Logout'}</span>
-            </button>
-          </div>
-        </div>
-      </nav>
+      {/* 1. TOP NAVBAR */}
+      <DashboardNavbar
+        activeRole="citizen"
+        locationText={`${userProfile?.talukaName || userProfile?.taluka || 'Local'}, ${userProfile?.districtName || userProfile?.district || 'District'}`}
+        userName={userProfile?.name || currentUser?.displayName || currentUser?.email}
+        onLogout={handleLogoutClick}
+        onBrandClick={() => { stopTextToSpeech(); setActiveNav('my_complaints'); }}
+        showLanguageSelector={true}
+        currentLanguage={activeLanguage}
+        onSelectLanguage={setLanguage}
+      />
 
       {/* 2. MAIN DASHBOARD CONTENT */}
       <main className="dashboard-content">
-        <section className="hero-section">
-          <div>
-            <p className="welcome-label">{t.welcomeSub || 'Make Your Community Better.'}</p>
-            <h1>{t.welcome || 'Welcome to GovBridge'}</h1>
-            <p>
-              {t.welcomeDesc || 'Report civic problems, track their progress, and help create a better community.'}
-            </p>
+        <DashboardHero
+          eyebrow={t.citizen || 'CITIZEN CIVIC PORTAL'}
+          title={t.welcome || 'Welcome to GovBridge'}
+          subtitle={t.welcomeSub || 'Make a difference in your community'}
+          description={t.welcomeDesc || 'Report civic problems, track their progress, and help create a better community.'}
+          icon={IconBuilding}
+        />
+
+        {/* CITIZEN NAVIGATION TABS BAR (MOCKUP ACCURATE) */}
+        <div className="citizen-tabs-bar">
+          <div className="citizen-nav-pills">
+            <button
+              type="button"
+              className={`citizen-tab-pill ${activeNav === 'profile' ? 'active' : ''}`}
+              onClick={() => { stopTextToSpeech(); setActiveNav('profile'); }}
+            >
+              <IconUsers size={16} />
+              <span>Profile</span>
+            </button>
+
+            <button
+              type="button"
+              className={`citizen-tab-pill ${activeNav === 'submit' ? 'active' : ''}`}
+              onClick={() => { stopTextToSpeech(); setActiveNav('submit'); }}
+            >
+              <IconPlusCircle size={16} />
+              <span>Submit Complaint</span>
+            </button>
+
+            <button
+              type="button"
+              className={`citizen-tab-pill ${activeNav === 'my_complaints' ? 'active' : ''}`}
+              onClick={() => { stopTextToSpeech(); setActiveNav('my_complaints'); }}
+            >
+              <IconFolder size={16} />
+              <span>My Complaints ({issues.length})</span>
+            </button>
+
+            <button
+              type="button"
+              className={`citizen-tab-pill ${activeNav === 'complaint_status' ? 'active' : ''}`}
+              onClick={() => { stopTextToSpeech(); setActiveNav('complaint_status'); }}
+            >
+              <IconActivity size={16} />
+              <span>Complaint Status</span>
+            </button>
           </div>
-        </section>
 
-        {/* CITIZEN NAVIGATION TABS */}
-        <div className="citizen-nav-tabs" style={{ display: 'flex', gap: '8px', margin: '20px 0', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className={`filter-btn ${activeNav === 'profile' ? 'active' : ''}`}
-            onClick={() => { stopTextToSpeech(); setActiveNav('profile'); }}
-            style={{ padding: '9px 18px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <IconUsers size={16} />
-            <span>Profile</span>
-          </button>
-
-          <button
-            type="button"
-            className={`filter-btn ${activeNav === 'submit' ? 'active' : ''}`}
-            onClick={() => { stopTextToSpeech(); setActiveNav('submit'); }}
-            style={{ padding: '9px 18px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <IconPlusCircle size={16} />
-            <span>Submit Complaint</span>
-          </button>
-
-          <button
-            type="button"
-            className={`filter-btn ${activeNav === 'my_complaints' ? 'active' : ''}`}
-            onClick={() => { stopTextToSpeech(); setActiveNav('my_complaints'); }}
-            style={{ padding: '9px 18px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <IconFolder size={16} />
-            <span>My Complaints ({issues.length})</span>
-          </button>
-
-          <button
-            type="button"
-            className={`filter-btn ${activeNav === 'complaint_status' ? 'active' : ''}`}
-            onClick={() => { stopTextToSpeech(); setActiveNav('complaint_status'); }}
-            style={{ padding: '9px 18px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <IconActivity size={16} />
-            <span>Complaint Status</span>
-          </button>
+          {/* Category Dropdown Filter on the right */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="form-select"
+              style={{ padding: '7px 14px', fontSize: '13px', borderRadius: '20px', border: '1px solid #cbd5e1' }}
+            >
+              <option value="All">All Categories</option>
+              <option value="Roads">{t.roadsPotholes || 'Roads & Potholes'}</option>
+              <option value="Garbage">{t.garbageSanitation || 'Garbage & Sanitation'}</option>
+              <option value="Streetlight">{t.streetlights || 'Streetlights'}</option>
+              <option value="Water">{t.waterSupply || 'Water Supply'}</option>
+              <option value="Drainage">{t.drainageFlooding || 'Drainage & Flooding'}</option>
+              <option value="Electricity">{t.electricityPower || 'Electricity & Power'}</option>
+              <option value="Other">{t.otherCivic || 'Other Civic Issues'}</option>
+            </select>
+          </div>
         </div>
 
         {/* ======================================================== */}
@@ -339,142 +327,154 @@ function Dashboard({ onLogout }) {
         {/* ======================================================== */}
         {activeNav === 'my_complaints' && (
           <section className="my-complaints-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 16px 0', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: '0 0 4px 0' }}>
-                  {t.myIssues || 'My Complaints'} ({filteredIssues.length})
-                </h2>
-                <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-                  Showing all civic complaints submitted by your account.
-                </p>
+            <div className="govbridge-main-card">
+              <div className="govbridge-card-header">
+                <div className="govbridge-card-header-left">
+                  <div className="govbridge-card-header-icon">
+                    <IconFolder size={22} color="#0FA58F" />
+                  </div>
+                  <div>
+                    <h2 className="govbridge-card-title">{t.myIssues || 'My Issues'} ({filteredIssues.length})</h2>
+                    <p className="govbridge-card-subtitle">Showing all civic complaints submitted by your account.</p>
+                  </div>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="form-select"
-                  style={{ padding: '6px 12px', fontSize: '13px' }}
-                >
-                  <option value="All">All Categories</option>
-                  <option value="Roads">{t.roadsPotholes || 'Roads & Potholes'}</option>
-                  <option value="Garbage">{t.garbageSanitation || 'Garbage & Sanitation'}</option>
-                  <option value="Streetlight">{t.streetlights || 'Streetlights'}</option>
-                  <option value="Water">{t.waterSupply || 'Water Supply'}</option>
-                  <option value="Drainage">{t.drainageFlooding || 'Drainage & Flooding'}</option>
-                  <option value="Electricity">{t.electricityPower || 'Electricity & Power'}</option>
-                  <option value="Other">{t.otherCivic || 'Other Civic Issues'}</option>
-                </select>
-              </div>
-            </div>
+              {loadingIssues ? (
+                <div style={{ padding: '36px', textAlign: 'center' }}>
+                  <p style={{ color: '#64748b' }}>{t.loadingIssues || 'Loading your reported complaints...'}</p>
+                </div>
+              ) : filteredIssues.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                  <h3 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>{t.noIssues || "No complaints found."}</h3>
+                  <p style={{ margin: '0 0 16px 0', fontSize: '14px' }}>
+                    {filterCategory === 'All' ? "You haven't reported any civic complaints yet." : `No complaints found in category "${filterCategory}".`}
+                  </p>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => setActiveNav('submit')}
+                  >
+                    <IconPlusCircle size={16} />
+                    <span>Submit a Complaint</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="issue-cards-grid">
+                  {filteredIssues.map((issue) => {
+                    const priority = (issue.priority || 'Medium').toLowerCase()
+                    const status = (issue.status || 'Pending').toLowerCase()
+                    const isSpeaking = speakingIssueId === issue.id
 
-            {loadingIssues ? (
-              <div className="stat-card" style={{ padding: '30px', textAlign: 'center' }}>
-                <p style={{ color: '#64748b' }}>{t.loadingIssues || 'Loading your reported complaints...'}</p>
-              </div>
-            ) : filteredIssues.length === 0 ? (
-              <div className="stat-card" style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-                <h3 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>{t.noIssues || "No complaints found."}</h3>
-                <p style={{ margin: '0 0 16px 0', fontSize: '14px' }}>
-                  {filterCategory === 'All' ? "You haven't reported any civic complaints yet." : `No complaints found in category "${filterCategory}".`}
-                </p>
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => setActiveNav('submit')}
-                >
-                  <IconPlusCircle size={16} />
-                  <span>Submit a Complaint</span>
-                </button>
-              </div>
-            ) : (
-              <div className="issue-cards-grid">
-                {filteredIssues.map((issue) => {
-                  const priority = (issue.priority || 'Medium').toLowerCase()
-                  const status = (issue.status || 'Pending').toLowerCase()
-                  const isSpeaking = speakingIssueId === issue.id
-
-                  return (
-                    <div key={issue.id} className="issue-card">
-                      <div className="issue-header-row">
-                        <div className="issue-title-group">
-                          <span className={`priority-badge priority-${priority}`}>
-                            {priority === 'high' && '🚨 '}
-                            {translatePriority(issue.priority, t)}
-                          </span>
-                          {issue.preferredLanguage && (
-                            <span style={{ fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '10px', fontWeight: '600' }}>
-                              🌐 {issue.preferredLanguage}
+                    return (
+                      <div key={issue.id} className="issue-card">
+                        {/* 1. TOP BADGES ROW (MOCKUP MATCHING) */}
+                        <div className="issue-top-badges-row">
+                          <div className="issue-badges-left">
+                            <span className={`priority-badge priority-${priority}`}>
+                              <IconClock size={12} />
+                              <span>{translatePriority(issue.priority, t)} PRIORITY</span>
                             </span>
-                          )}
-                          <h2 className="issue-title">{issue.title}</h2>
-                        </div>
 
-                        <span className={`status-badge status-${status.replace(' ', '-')}`}>
-                          {translateStatus(issue.status, t)}
-                        </span>
-                      </div>
+                            <span className="category-badge-pill">
+                              <IconFolder size={12} />
+                              <span>{translateCategory(issue.category, t)}</span>
+                            </span>
 
-                      <div className="issue-meta-row">
-                        <div className="issue-meta-item">
-                          <strong>{t.category || 'Category'}:</strong> {translateCategory(issue.category, t)}
-                        </div>
-                        <div className="issue-meta-item">
-                          <strong>{t.location || 'Location'}:</strong> {issue.location || 'Not specified'}
-                        </div>
-                        <div className="issue-meta-item">
-                          <strong>{t.date || 'Date'}:</strong> {formatDate(issue.createdAt)}
-                        </div>
-                      </div>
+                            {issue.preferredLanguage && (
+                              <span style={{ fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '10px', fontWeight: '600' }}>
+                                🌐 {issue.preferredLanguage}
+                              </span>
+                            )}
+                          </div>
 
-                      <p className="issue-description">{issue.description}</p>
-
-                      {issue.imageUrl && (
-                        <div className="issue-image-container">
-                          <img
-                            src={issue.imageUrl}
-                            alt={issue.title}
-                            className="issue-photo"
-                            loading="lazy"
-                          />
-                        </div>
-                      )}
-
-                      {/* AI English Translation (if submitted in another language) */}
-                      {issue.aiTranslatedText && (
-                        <div className="ai-translated-box">
-                          <span className="ai-trans-label">
-                            ✨ {t.aiTranslation || 'AI Translation (English)'}:
-                          </span>
-                          <p className="ai-trans-text">{issue.aiTranslatedText}</p>
-                        </div>
-                      )}
-
-                      {/* Resolution Notes from Taluka Officer if Resolved */}
-                      {issue.status === 'Resolved' && issue.resolutionNotes && (
-                        <div style={{ marginTop: '10px', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', fontSize: '13px', color: '#166534' }}>
-                          <strong>✓ Officer Resolution Note:</strong> {issue.resolutionNotes}
-                        </div>
-                      )}
-
-                      {/* Action row with Text-to-Speech listen button */}
-                      <div className="issue-card-actions">
-                        {isSpeechSynthesisSupported() && (
                           <button
                             type="button"
-                            className="btn-tts-listen"
+                            className="view-details-link-btn"
                             onClick={() => handleToggleListen(issue)}
-                            aria-label={isSpeaking ? 'Stop reading complaint' : 'Listen to complaint aloud'}
+                            title="Listen or review details"
                           >
-                            <span>{isSpeaking ? (t.stopReading || '⏹️ Stop') : (t.listenToComplaint || '🔊 Listen')}</span>
+                            <span>{isSpeaking ? (t.stopReading || 'Stop ⏹️') : 'View Details →'}</span>
                           </button>
+                        </div>
+
+                        {/* 2. COMPLAINT TITLE */}
+                        <h2 className="issue-title-heading">{issue.title}</h2>
+
+                        {/* 3. STATUS BADGE ROW */}
+                        <div className="issue-status-pill-row">
+                          <span className={`status-badge status-${status.replace(/\s+/g, '-')}`}>
+                            {translateStatus(issue.status, t)}
+                          </span>
+                        </div>
+
+                        {/* 4. METADATA ROW WITH ICONS */}
+                        <div className="issue-meta-items-row">
+                          <span className="issue-meta-item-span">
+                            <IconFolder size={14} color="#64748b" />
+                            <span><strong>{t.category || 'Category'}:</strong> {translateCategory(issue.category, t)}</span>
+                          </span>
+                          <span className="issue-meta-item-span">
+                            <IconMapPin size={14} color="#64748b" />
+                            <span><strong>{t.location || 'Location'}:</strong> {issue.location || 'Local Jurisdiction'}</span>
+                          </span>
+                          <span className="issue-meta-item-span">
+                            <IconCalendar size={14} color="#64748b" />
+                            <span><strong>{t.date || 'Date'}:</strong> {formatDate(issue.createdAt)}</span>
+                          </span>
+                        </div>
+
+                        {/* 5. DESCRIPTION */}
+                        <p className="issue-description-text">{issue.description}</p>
+
+                        {/* 6. PHOTO ATTACHMENT */}
+                        {issue.imageUrl && (
+                          <div className="issue-image-container" style={{ margin: '14px 0' }}>
+                            <img
+                              src={issue.imageUrl}
+                              alt={issue.title}
+                              className="issue-photo"
+                              loading="lazy"
+                            />
+                          </div>
                         )}
+
+                        {/* 7. AI TRANSLATION IF MULTILINGUAL */}
+                        {issue.aiTranslatedText && (
+                          <div className="ai-translated-box" style={{ margin: '12px 0' }}>
+                            <span className="ai-trans-label">
+                              ✨ {t.aiTranslation || 'AI Translation (English)'}:
+                            </span>
+                            <p className="ai-trans-text">{issue.aiTranslatedText}</p>
+                          </div>
+                        )}
+
+                        {/* 8. OFFICER RESOLUTION NOTE */}
+                        {issue.status === 'Resolved' && issue.resolutionNotes && (
+                          <div style={{ marginTop: '12px', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '13px', color: '#166534' }}>
+                            <strong>✓ Officer Resolution Note:</strong> {issue.resolutionNotes}
+                          </div>
+                        )}
+
+                        {/* 9. TTS READ ALOUD ACTION */}
+                        <div className="issue-card-actions" style={{ marginTop: '10px' }}>
+                          {isSpeechSynthesisSupported() && (
+                            <button
+                              type="button"
+                              className="btn-tts-listen"
+                              onClick={() => handleToggleListen(issue)}
+                              aria-label={isSpeaking ? 'Stop reading complaint' : 'Listen to complaint aloud'}
+                            >
+                              <span>{isSpeaking ? (t.stopReading || '⏹️ Stop') : (t.listenToComplaint || '🔊 Listen')}</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </section>
         )}
 
